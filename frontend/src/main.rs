@@ -1,13 +1,16 @@
 use dioxus::prelude::*;
 use reqwasm::http::{Request, RequestCredentials};
-use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use std::rc::Rc;
 use web_sys::wasm_bindgen::JsCast;
 use web_sys::{FormData, HtmlDocument, HtmlInputElement, File};
 
 fn main() {
     launch(App);
 }
+
+const BUILD_TAG: &str = "ban-click-v2";
 
 // ---------- Types ----------
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -63,6 +66,14 @@ struct AuthMeResponse { status: String, user: AuthUser }
 struct AdminUser { id: i64, name: String, primary_group: Option<i64>, additional_groups: Vec<i64>, warning: i32 }
 #[derive(Deserialize)]
 struct AdminUsersResponse { status: String, members: Vec<AdminUser> }
+#[derive(Clone, Debug, Deserialize)]
+struct AdminAccount { id: i64, name: String, role: Option<String>, permissions: Vec<String> }
+#[derive(Deserialize)]
+struct AdminAccountsResponse { status: String, admins: Vec<AdminAccount> }
+#[derive(Clone, Debug, Deserialize)]
+struct AdminGroup { id: i64, name: String }
+#[derive(Deserialize)]
+struct AdminGroupsResponse { status: String, groups: Vec<AdminGroup> }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 struct BoardAccessEntry { id: String, name: String, allowed_groups: Vec<i64> }
@@ -118,7 +129,19 @@ struct PersonalMessage {
 struct PersonalMessageListResponse { status: String, messages: Vec<PersonalMessage>, total: usize, unread: usize }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-struct BanRuleView { id: i64, expires_at: Option<String>, reason: Option<String> }
+struct BanMemberView { member_id: i64, name: String }
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+struct BanRuleView {
+    id: i64,
+    expires_at: Option<String>,
+    reason: Option<String>,
+    #[serde(default)]
+    members: Vec<BanMemberView>,
+    #[serde(default)]
+    emails: Vec<String>,
+    #[serde(default)]
+    ips: Vec<String>,
+}
 #[derive(Deserialize)]
 struct BanListResponse { status: String, bans: Vec<BanRuleView> }
 
@@ -228,6 +251,8 @@ fn App() -> Element {
     let mut ban_reason = use_signal(|| "".to_string());
     let mut bans = use_signal(Vec::<BanRuleView>::new);
     let mut admin_users = use_signal(Vec::<AdminUser>::new);
+    let mut admin_accounts = use_signal(Vec::<AdminAccount>::new);
+    let mut admin_groups = use_signal(Vec::<AdminGroup>::new);
     let mut admin_user_query = use_signal(|| "".to_string());
 
     // actions (login/register etc.)
@@ -238,6 +263,10 @@ fn App() -> Element {
         let mut status = status.clone();
         let mut token_sig = token.clone();
         let mut current_user = current_user.clone();
+        let mut is_login_page = is_login_page.clone();
+        let mut is_register_page = is_register_page.clone();
+        let mut is_admin_page = is_admin_page.clone();
+        let mut boards_checked = boards_checked.clone();
         if user.is_empty() || pass.is_empty() {
             status.set("请输入邮箱和密码".into());
             return;
@@ -256,6 +285,10 @@ fn App() -> Element {
                     csrf_token.set(csrf.clone());
                     set_csrf_cookie(&csrf);
                     status.set(format!("已登录：{}", resp.user.name));
+                    is_login_page.set(false);
+                    is_register_page.set(false);
+                    is_admin_page.set(false);
+                    boards_checked.set(false);
                 }
                 Err(err) => status.set(format!("登录失败：{err}")),
             }
@@ -821,22 +854,22 @@ fn App() -> Element {
         });
     };
 
-    let revoke_ban = move |ban_id: i64| {
+    let revoke_ban = Rc::new(move |ban_id: i64| {
         let base = api_base.read().clone();
         let jwt = token.read().clone();
         let csrf = csrf_token.read().clone();
         let mut status = status.clone();
         let bans_sig = bans.clone();
         if jwt.trim().is_empty() { status.set("请先登录/粘贴管理员 JWT".into()); return; }
+        status.set("解除封禁中...".into());
         spawn(async move {
-            status.set("解除封禁中...".into());
-            let payload = serde_json::json!({ "member_id": ban_id });
+            let payload = serde_json::json!({ "ban_id": ban_id });
             match post_json::<serde_json::Value, _>(&base, "/admin/bans/revoke", &jwt, &csrf, &payload).await {
                 Ok(_) => { status.set("已解除封禁".into()); load_bans_inner(base, jwt, csrf, bans_sig.clone(), status.clone()).await; }
                 Err(err) => status.set(format!("解除失败：{err}")),
             }
         });
-    };
+    });
 
     // helper to reload bans
     fn load_bans_inner(base: String, jwt: String, csrf: String, mut bans_sig: Signal<Vec<BanRuleView>>, mut status: Signal<String>) -> impl std::future::Future<Output=()> {
@@ -873,6 +906,36 @@ fn App() -> Element {
             match get_json::<AdminUsersResponse>(&base, &path, &jwt, "").await {
                 Ok(resp) => { admin_users.set(resp.members); status.set("用户列表已刷新".into()); }
                 Err(err) => status.set(format!("加载用户失败：{err}")),
+            }
+        });
+    };
+
+    let load_admin_accounts = move || {
+        let base = api_base.read().clone();
+        let jwt = token.read().clone();
+        let mut status = status.clone();
+        let mut admin_accounts = admin_accounts.clone();
+        if jwt.trim().is_empty() { status.set("请先登录/粘贴管理员 JWT".into()); return; }
+        spawn(async move {
+            match get_json::<AdminAccountsResponse>(&base, "/admin/admins", &jwt, "").await {
+                Ok(resp) => { admin_accounts.set(resp.admins); status.set("管理员列表已刷新".into()); }
+                Err(err) => status.set(format!("加载管理员失败：{err}")),
+            }
+        });
+    };
+
+    let load_admin_groups = move || {
+        let base = api_base.read().clone();
+        let jwt = token.read().clone();
+        let csrf = csrf_token.read().clone();
+        let mut status = status.clone();
+        let mut groups = admin_groups.clone();
+        if jwt.trim().is_empty() { status.set("请先登录/粘贴管理员 JWT".into()); return; }
+        spawn(async move {
+            status.set("加载组列表中...".into());
+            match get_json::<AdminGroupsResponse>(&base, "/admin/groups", &jwt, &csrf).await {
+                Ok(resp) => { groups.set(resp.groups); status.set("组列表已刷新".into()); }
+                Err(err) => status.set(format!("加载组列表失败：{err}")),
             }
         });
     };
@@ -940,7 +1003,7 @@ fn App() -> Element {
                 }
             }
 
-            div { class: "status-bar", "状态：{status.read()}" }
+            div { class: "status-bar", "状态({BUILD_TAG})：{status.read()}" }
 
             {if is_login && !is_admin { rsx! {
                 section { class: "panel login-panel",
@@ -1392,6 +1455,8 @@ fn App() -> Element {
                             input { value: "{admin_user_query.read()}", oninput: move |evt| admin_user_query.set(evt.value()), placeholder: "输入邮箱或用户名" }
                             div { class: "actions",
                                 button { onclick: move |_| load_admin_users(), "刷新用户" }
+                                button { onclick: move |_| load_admin_accounts(), "刷新管理员" }
+                                button { onclick: move |_| load_admin_groups(), "刷新组映射" }
                             }
                         }
                         div {
@@ -1412,6 +1477,39 @@ fn App() -> Element {
                                         li { class: "item",
                                             strong { "{display_name}" }
                                             div { class: "meta", "ID: {member.id} | 主组: {member.primary_group.unwrap_or(0)} | 附加组: {groups} | 警告: {member.warning}" }
+                                        }
+                                    }
+                                })}
+                            }
+                            h4 { "管理员" }
+                            ul { class: "list",
+                                { admin_accounts.read().iter().cloned().map(|admin| {
+                                    let display_name = if admin.name.trim().is_empty() {
+                                        format!("(unnamed #{})", admin.id)
+                                    } else {
+                                        admin.name.clone()
+                                    };
+                                    let role = admin.role.clone().unwrap_or_else(|| "unknown".into());
+                                    let perms = if admin.permissions.is_empty() {
+                                        "(无)".into()
+                                    } else {
+                                        admin.permissions.join(", ")
+                                    };
+                                    rsx! {
+                                        li { class: "item",
+                                            strong { "{display_name}" }
+                                            div { class: "meta", "ID: {admin.id} | 角色: {role} | 权限: {perms}" }
+                                        }
+                                    }
+                                })}
+                            }
+                            h4 { "组映射（ID -> 名称）" }
+                            ul { class: "list",
+                                { admin_groups.read().iter().cloned().map(|g| {
+                                    rsx! {
+                                        li { class: "item",
+                                            strong { "组 #{g.id}" }
+                                            div { class: "meta", "{g.name}" }
                                         }
                                     }
                                 })}
@@ -1528,11 +1626,37 @@ fn App() -> Element {
                             { bans.read().iter().cloned().map(|b| {
                                 let expires = b.expires_at.clone().unwrap_or_default();
                                 let reason = b.reason.clone().unwrap_or_default();
+                                let revoke = revoke_ban.clone();
+                                let mut status = status.clone();
+                                let members = if b.members.is_empty() {
+                                    "无".to_string()
+                                } else {
+                                    b.members
+                                        .iter()
+                                        .map(|m| {
+                                            if m.name.is_empty() {
+                                                format!("{}", m.member_id)
+                                            } else {
+                                                format!("{}({})", m.name, m.member_id)
+                                            }
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                };
+                                let emails = if b.emails.is_empty() { "无".to_string() } else { b.emails.join(", ") };
+                                let ips = if b.ips.is_empty() { "无".to_string() } else { b.ips.join(", ") };
                                 rsx! {
-                                    li { class: "item",
+                                    li { class: "item", onpointerdown: move |_| {
+                                        status.set(format!("点击Ban项 #{}", b.id));
+                                    },
                                         strong { "Ban #{b.id}" }
                                         div { class: "meta", "过期时间: {expires} | 原因: {reason}" }
-                                        button { class: "ghost-btn", onclick: move |_| revoke_ban(b.id), "解除" }
+                                        div { class: "meta", "成员: {members}" }
+                                        div { class: "meta", "邮箱: {emails} | IP: {ips}" }
+                                        button { class: "ghost-btn", r#type: "button", onpointerdown: move |_| {
+                                            status.set(format!("点击解除 Ban #{}", b.id));
+                                            (revoke)(b.id);
+                                        }, "解除(测试点击)" }
                                     }
                                 }
                             }) }
@@ -1594,6 +1718,7 @@ a { color: inherit; text-decoration: none; }
 .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(247,147,26,0.15); color: #ffbd71; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; font-size: 12px; }
 .ghost-btn { padding: 9px 12px; border-radius: 10px; border: 1px solid rgba(0,245,255,0.35); background: rgba(0,245,255,0.08); color: #d9fbff; cursor: pointer; box-shadow: inset 0 0 10px rgba(0,245,255,0.08); transition: all 0.2s ease; }
 .ghost-btn:hover { box-shadow: 0 0 18px rgba(0,245,255,0.35); transform: translateY(-1px); }
+.ghost-btn, .item { pointer-events: auto; }
 .panel { background: rgba(10,16,26,0.86); border: 1px solid rgba(0,245,255,0.2); border-radius: var(--radius); padding: 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.45); }
 .panel h2, .panel h3, .panel h4 { margin: 0 0 10px; }
 .panel__header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }

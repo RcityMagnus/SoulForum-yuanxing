@@ -13,6 +13,7 @@ use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{
+    collections::HashMap,
     env,
     net::SocketAddr,
     path::PathBuf,
@@ -224,14 +225,13 @@ fn build_ctx_from_user(user: &SurrealUser, claims: &AuthClaims) -> ForumContext 
         ctx.user_info.permissions.insert("post_reply_any".into());
     }
 
-    if ctx.user_info.groups.is_empty() {
-        if ctx.user_info.is_admin {
-            ctx.user_info.groups.push(0);
-        } else if ctx.user_info.is_mod {
-            ctx.user_info.groups.extend([2, 1]);
-        } else {
-            ctx.user_info.groups.push(1);
-        }
+    ctx.user_info.groups.clear();
+    if ctx.user_info.is_admin {
+        ctx.user_info.groups.push(0);
+    } else if ctx.user_info.is_mod {
+        ctx.user_info.groups.extend([2]);
+    } else {
+        ctx.user_info.groups.push(4);
     }
 
     ctx
@@ -322,7 +322,7 @@ fn rainbow_auth_error_response(
     }
 }
 
-fn ensure_permission_for_board(
+async fn ensure_permission_for_board(
     state: &AppState,
     ctx: &ForumContext,
     permission: &str,
@@ -330,13 +330,41 @@ fn ensure_permission_for_board(
 ) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
     let mut working = ctx.clone();
     if let Some(board) = board_id {
-        if let Err(err) = load_permissions(&state.forum_service, &mut working, Some(board.to_string())) {
+        let forum_service = state.forum_service.clone();
+        let board = board.to_string();
+        working = match tokio::task::spawn_blocking(move || {
+            let mut updated = working;
+            load_permissions(&forum_service, &mut updated, Some(board))?;
+            Ok::<ForumContext, ForumError>(updated)
+        })
+        .await
+        .map_err(|err| {
             error!(error = %err, "failed to load permissions");
-            return Err((
+            (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({"status": "error", "message": "failed to load permissions"})),
-            ));
-        }
+            )
+        })?
+        {
+            Ok(updated) => updated,
+            Err(err) => {
+                match &err {
+                    ForumError::PermissionDenied(message) => {
+                        return Err((
+                            StatusCode::FORBIDDEN,
+                            Json(json!({"status": "error", "message": message})),
+                        ));
+                    }
+                    _ => {
+                        error!(error = %err, "failed to load permissions");
+                        return Err((
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({"status": "error", "message": "failed to load permissions"})),
+                        ));
+                    }
+                }
+            }
+        };
     }
     ensure_permission(state, &working, permission)
 }
@@ -349,9 +377,9 @@ fn user_groups(ctx: &ForumContext) -> Vec<i64> {
         return vec![0];
     }
     if ctx.user_info.is_mod {
-        return vec![2, 1];
+        return vec![2];
     }
-    vec![1]
+    vec![4]
 }
 
 async fn load_board_access(state: &AppState) -> Result<Vec<BoardAccessEntry>, ForumError> {
@@ -771,6 +799,8 @@ async fn main() {
             get(list_surreal_posts_for_topic).post(create_surreal_topic_post),
         )
         .route("/admin/users", get(list_users))
+        .route("/admin/admins", get(list_admins))
+        .route("/admin/groups", get(list_groups))
         .route("/admin/bans", get(list_bans))
         .route("/admin/action_logs", get(list_action_logs))
         .route("/admin/bans/apply", post(apply_ban))
@@ -1115,7 +1145,7 @@ async fn surreal_post(
     if let Err(resp) = ensure_board_access(&state, &ctx, &payload.board_id).await {
         return resp.into_response();
     }
-    if let Err(resp) = ensure_permission_for_board(&state, &ctx, "post_new", Some(&payload.board_id))
+    if let Err(resp) = ensure_permission_for_board(&state, &ctx, "post_new", Some(&payload.board_id)).await
     {
         return resp.into_response();
     }
@@ -1312,7 +1342,7 @@ async fn create_surreal_topic(
     if let Err(resp) = ensure_board_access(&state, &ctx, &payload.board_id).await {
         return resp.into_response();
     }
-    if let Err(resp) = ensure_permission_for_board(&state, &ctx, "post_new", Some(&payload.board_id))
+    if let Err(resp) = ensure_permission_for_board(&state, &ctx, "post_new", Some(&payload.board_id)).await
     {
         return resp.into_response();
     }
@@ -1437,7 +1467,7 @@ async fn create_surreal_topic_post(
     }
     // Basic XSS mitigation by sanitizing HTML content
     if let Err(resp) =
-        ensure_permission_for_board(&state, &ctx, "post_reply_any", Some(&payload.board_id))
+        ensure_permission_for_board(&state, &ctx, "post_reply_any", Some(&payload.board_id)).await
     {
         return resp.into_response();
     }
@@ -1969,7 +1999,7 @@ async fn delete_attachment_api(
             }
         }
     }
-    match state.forum_service.delete_attachment(id_num) {
+    match run_forum_blocking(&state, move |forum| forum.delete_attachment(id_num)).await {
         Ok(_) => (
             StatusCode::OK,
             Json(json!({"status": "ok", "id": payload.id})),
@@ -2272,19 +2302,17 @@ async fn demo_post(State(state): State<AppState>, claims: Option<AuthClaims>) ->
         return resp.into_response();
     }
 
-    match state.forum_service.persist_post(
-        &ctx,
-        btc_forum_rust::services::PostSubmission {
-            topic_id: None,
-            board_id: 0,
-            message_id: None,
-            subject: "API example".into(),
-            body: "Hello from Axum demo endpoint".into(),
-            icon: "xx".into(),
-            approved: true,
-            send_notifications: false,
-        },
-    ) {
+    let submission = btc_forum_rust::services::PostSubmission {
+        topic_id: None,
+        board_id: 0,
+        message_id: None,
+        subject: "API example".into(),
+        body: "Hello from Axum demo endpoint".into(),
+        icon: "xx".into(),
+        approved: true,
+        send_notifications: false,
+    };
+    match run_forum_blocking(&state, move |forum| forum.persist_post(&ctx, submission)).await {
         Ok(posted) => (
             StatusCode::OK,
             Json(json!({
@@ -2349,6 +2377,130 @@ async fn list_users(
     }
 }
 
+#[derive(Serialize)]
+struct AdminAccount {
+    id: i64,
+    name: String,
+    role: Option<String>,
+    permissions: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct AdminGroupView {
+    id: i64,
+    name: String,
+}
+
+async fn list_admins(
+    State(state): State<AppState>,
+    claims: Option<AuthClaims>,
+) -> impl IntoResponse {
+    let claims = match require_auth(&claims) {
+        Ok(c) => c.clone(),
+        Err(resp) => return resp.into_response(),
+    };
+    let (_user, ctx) = match ensure_user_ctx(&state, &claims).await {
+        Ok(value) => value,
+        Err(resp) => return resp.into_response(),
+    };
+    if let Err(resp) = ensure_admin(&ctx) {
+        return resp.into_response();
+    }
+
+    let mut response = match state
+        .surreal
+        .client()
+        .query(
+            r#"
+            SELECT meta::id(id) as id, name, role, permissions, password_hash, created_at
+            FROM users
+            WHERE role = 'admin' OR permissions CONTAINS 'manage_boards'
+            ORDER BY created_at ASC;
+            "#,
+        )
+        .await
+    {
+        Ok(resp) => resp,
+        Err(err) => {
+            error!(error = %err, "failed to list admin users");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"status": "error", "message": err.to_string()})),
+            )
+                .into_response();
+        }
+    };
+
+    let admins: Vec<SurrealUser> = match response.take(0) {
+        Ok(value) => value,
+        Err(err) => {
+            error!(error = %err, "failed to parse admin users");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"status": "error", "message": err.to_string()})),
+            )
+                .into_response();
+        }
+    };
+
+    let output: Vec<AdminAccount> = admins
+        .into_iter()
+        .map(|user| AdminAccount {
+            id: user.legacy_id(),
+            name: user.name,
+            role: user.role,
+            permissions: user.permissions.unwrap_or_default(),
+        })
+        .collect();
+
+    (
+        StatusCode::OK,
+        Json(json!({ "status": "ok", "admins": output })),
+    )
+        .into_response()
+}
+
+async fn list_groups(
+    State(state): State<AppState>,
+    claims: Option<AuthClaims>,
+) -> impl IntoResponse {
+    let claims = match require_auth(&claims) {
+        Ok(c) => c.clone(),
+        Err(resp) => return resp.into_response(),
+    };
+    let (_user, ctx) = match ensure_user_ctx(&state, &claims).await {
+        Ok(value) => value,
+        Err(resp) => return resp.into_response(),
+    };
+    if let Err(resp) = ensure_admin(&ctx) {
+        return resp.into_response();
+    }
+    match run_forum_blocking(&state, move |forum| forum.list_membergroups()).await {
+        Ok(groups) => {
+            let output: Vec<AdminGroupView> = groups
+                .into_iter()
+                .map(|g| AdminGroupView {
+                    id: g.id,
+                    name: g.name,
+                })
+                .collect();
+            (
+                StatusCode::OK,
+                Json(json!({ "status": "ok", "groups": output })),
+            )
+                .into_response()
+        }
+        Err(err) => {
+            error!(error = %err, "failed to list membergroups");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"status": "error", "message": err.to_string()})),
+            )
+                .into_response()
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct AdminNotifyPayload {
     user_ids: Vec<i64>,
@@ -2358,7 +2510,10 @@ struct AdminNotifyPayload {
 
 #[derive(Deserialize)]
 struct BanPayload {
-    member_id: i64,
+    #[serde(default)]
+    member_id: Option<i64>,
+    #[serde(default)]
+    ban_id: Option<i64>,
     reason: Option<String>,
     hours: Option<i64>,
 }
@@ -2439,7 +2594,9 @@ async fn admin_notify(
         subject: sanitize_input(&payload.subject),
         body: sanitize_input(&payload.body),
     };
-    match state.forum_service.send_personal_message(message) {
+    let subject = payload.subject.clone();
+    let user_ids = payload.user_ids.clone();
+    match run_forum_blocking(&state, move |forum| forum.send_personal_message(message)).await {
         Ok(result) => (
             StatusCode::OK,
             Json(json!({"status": "ok", "sent_to": result.recipient_ids })),
@@ -2447,15 +2604,15 @@ async fn admin_notify(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to send admin notification");
-            let _ = state.forum_service.log_action(
-                "admin_notify_error",
-                None,
-                &json!({
-                    "error": err.to_string(),
-                    "subject": payload.subject,
-                    "user_ids": payload.user_ids,
-                }),
-            );
+            let log_payload = json!({
+                "error": err.to_string(),
+                "subject": subject,
+                "user_ids": user_ids,
+            });
+            let _ = run_forum_blocking(&state, move |forum| {
+                forum.log_action("admin_notify_error", None, &log_payload)
+            })
+            .await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({"status": "error", "message": err.to_string()})),
@@ -2481,8 +2638,56 @@ async fn list_bans(
     if let Err(resp) = ensure_admin(&ctx) {
         return resp.into_response();
     }
-    match state.forum_service.list_ban_rules() {
-        Ok(bans) => (StatusCode::OK, Json(json!({"status": "ok", "bans": bans}))).into_response(),
+    match run_forum_blocking(&state, move |forum| {
+        let bans = forum.list_ban_rules()?;
+        let members = forum.list_members()?;
+        Ok((bans, members))
+    })
+    .await
+    {
+        Ok((bans, members)) => {
+            let member_map: HashMap<i64, String> = members
+                .into_iter()
+                .map(|m| (m.id, m.name))
+                .collect();
+            let mut view = Vec::new();
+            for ban in bans {
+                let mut member_ids = Vec::new();
+                let mut emails = Vec::new();
+                let mut ips = Vec::new();
+                for cond in &ban.conditions {
+                    match &cond.affects {
+                        BanAffects::Account { member_id } => member_ids.push(*member_id),
+                        BanAffects::Email { value } => emails.push(value.clone()),
+                        BanAffects::Ip { value } => ips.push(value.clone()),
+                    }
+                }
+                member_ids.sort_unstable();
+                member_ids.dedup();
+                emails.sort();
+                emails.dedup();
+                ips.sort();
+                ips.dedup();
+                let members = member_ids
+                    .iter()
+                    .map(|id| {
+                        json!({
+                            "member_id": id,
+                            "name": member_map.get(id).cloned().unwrap_or_default(),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+                view.push(json!({
+                    "id": ban.id,
+                    "reason": ban.reason,
+                    "expires_at": ban.expires_at.map(|dt| dt.to_rfc3339()),
+                    "members": members,
+                    "emails": emails,
+                    "ips": ips,
+                }));
+            }
+            (StatusCode::OK, Json(json!({"status": "ok", "bans": view}))).into_response()
+        }
         Err(err) => {
             error!(error = %err, "failed to list bans");
             (
@@ -2514,6 +2719,14 @@ async fn apply_ban(
     if let Err(resp) = verify_csrf(&headers) {
         return resp.into_response();
     }
+    let member_id = payload.member_id.unwrap_or(0);
+    if member_id == 0 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"status": "error", "message": "member_id required"})),
+        )
+            .into_response();
+    }
     let hours = payload.hours.unwrap_or(24).clamp(1, 24 * 365);
     let until = Utc::now()
         .checked_add_signed(chrono::Duration::hours(hours))
@@ -2526,16 +2739,14 @@ async fn apply_ban(
         conditions: vec![BanCondition {
             id: 0,
             reason: payload.reason.clone(),
-            affects: BanAffects::Account {
-                member_id: payload.member_id,
-            },
+            affects: BanAffects::Account { member_id },
             expires_at: Some(chrono::DateTime::from_timestamp(until, 0).unwrap()),
         }],
     };
-    match state.forum_service.save_ban_rule(rule) {
+    match run_forum_blocking(&state, move |forum| forum.save_ban_rule(rule)).await {
         Ok(id) => (
             StatusCode::OK,
-            Json(json!({"status": "ok", "ban_id": id, "member_id": payload.member_id})),
+            Json(json!({"status": "ok", "ban_id": id, "member_id": member_id})),
         )
             .into_response(),
         Err(err) => {
@@ -2569,10 +2780,18 @@ async fn revoke_ban(
     if let Err(resp) = verify_csrf(&headers) {
         return resp.into_response();
     }
-    match state.forum_service.delete_ban_rule(payload.member_id) {
+    let ban_id = payload.ban_id.or(payload.member_id).unwrap_or(0);
+    if ban_id == 0 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"status": "error", "message": "ban_id required"})),
+        )
+            .into_response();
+    }
+    match run_forum_blocking(&state, move |forum| forum.delete_ban_rule(ban_id)).await {
         Ok(_) => (
             StatusCode::OK,
-            Json(json!({"status": "ok", "ban_id": payload.member_id})),
+            Json(json!({"status": "ok", "ban_id": ban_id})),
         )
             .into_response(),
         Err(err) => {
@@ -2602,7 +2821,7 @@ async fn list_action_logs(
     if let Err(resp) = ensure_admin(&ctx) {
         return resp.into_response();
     }
-    match state.forum_service.list_action_logs() {
+    match run_forum_blocking(&state, move |forum| forum.list_action_logs()).await {
         Ok(logs) => (StatusCode::OK, Json(json!({"status": "ok", "logs": logs}))).into_response(),
         Err(err) => {
             error!(error = %err, "failed to list action logs");
@@ -2674,10 +2893,9 @@ async fn update_board_access(
         )
             .into_response();
     }
-    match state
-        .forum_service
-        .set_board_access(&payload.board_id, &payload.allowed_groups)
-    {
+    let board_id = payload.board_id.clone();
+    let allowed_groups = payload.allowed_groups.clone();
+    match run_forum_blocking(&state, move |forum| forum.set_board_access(&board_id, &allowed_groups)).await {
         Ok(_) => (
             StatusCode::OK,
             Json(json!({"status": "ok", "board_id": payload.board_id, "allowed_groups": payload.allowed_groups})),
@@ -2779,7 +2997,7 @@ async fn update_board_permissions(
         .client()
         .query(
             r#"
-            UPDATE type::thing("board_permissions", string::concat("bp:", $board_id, ":", $group_id)) SET
+            UPSERT type::thing("board_permissions", string::concat("bp:", $board_id, ":", $group_id)) SET
                 board_id = $board_id,
                 group_id = $group_id,
                 allow = $allow,

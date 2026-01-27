@@ -18,6 +18,7 @@ use crate::surreal::{
 };
 use chrono::{TimeZone, Utc};
 use serde::Deserialize;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use serde_json::Value;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -587,7 +588,7 @@ impl ForumService for SurrealService {
             self.client
                 .query(
                     r#"
-                    UPDATE type::thing("drafts", $id) SET
+                    UPSERT type::thing("drafts", $id) SET
                         board_id = $board_id,
                         topic_id = $topic_id,
                         subject = $subject,
@@ -698,7 +699,7 @@ impl ForumService for SurrealService {
             self.client
                 .query(
                     r#"
-                    UPDATE type::thing("calendar_events", $id) SET
+                    UPSERT type::thing("calendar_events", $id) SET
                         board_id = $board_id,
                         topic_id = $topic_id,
                         title = $title,
@@ -898,7 +899,7 @@ impl ForumService for SurrealService {
                 self.client
                     .query(
                         r#"
-                        SELECT id, name, description
+                        SELECT meta::id(id) as id, name, description
                         FROM membergroups;
                         "#,
                     )
@@ -1437,7 +1438,7 @@ impl ForumService for SurrealService {
                 self.client
                     .query(
                         r#"
-                        SELECT meta::id(id) as id, name, role, permissions
+                        SELECT meta::id(id) as id, name, role, permissions, primary_group, additional_groups
                         FROM users;
                         "#,
                     )
@@ -1450,22 +1451,35 @@ impl ForumService for SurrealService {
             name: String,
             _role: Option<String>,
             _permissions: Option<Vec<String>>,
+            primary_group: Option<i64>,
+            additional_groups: Option<Vec<i64>>,
         }
         let rows: Vec<Row> = response.take(0).unwrap_or_default();
         Ok(rows
             .into_iter()
-            .map(|row| MemberRecord {
-                id: row
+            .map(|row| {
+                let mut id = row
                     .id
                     .as_deref()
                     .and_then(|id| id.split(':').last())
                     .and_then(|s| s.parse().ok())
-                    .unwrap_or(0),
-                name: row.name,
-                primary_group: None,
-                additional_groups: Vec::new(),
-                password: String::new(),
-                warning: 0,
+                    .unwrap_or(0);
+                if id == 0 {
+                    let mut hasher = DefaultHasher::new();
+                    row.name.hash(&mut hasher);
+                    id = (hasher.finish() & 0x7FFF_FFFF_FFFF_FFFF) as i64;
+                    if id == 0 {
+                        id = 1;
+                    }
+                }
+                MemberRecord {
+                    id,
+                    name: row.name,
+                    primary_group: row.primary_group,
+                    additional_groups: row.additional_groups.unwrap_or_default(),
+                    password: String::new(),
+                    warning: 0,
+                }
             })
             .collect())
     }
@@ -1523,7 +1537,7 @@ impl ForumService for SurrealService {
             self.client
                 .query(
                     r#"
-                    UPDATE type::thing("board_access", $board_id) SET
+                    UPSERT type::thing("board_access", $board_id) SET
                         board_id = $board_id,
                         allowed_groups = $groups;
                     "#,
@@ -1746,7 +1760,7 @@ impl ForumService for SurrealService {
                 self.client
                     .query(
                         r#"
-                        SELECT id, reason, expires_at_ms
+                        SELECT meta::id(id) as id, reason, expires_at_ms, conditions
                         FROM ban_rules;
                         "#,
                     )
@@ -1758,6 +1772,7 @@ impl ForumService for SurrealService {
             id: Option<i64>,
             reason: Option<String>,
             expires_at_ms: Option<i64>,
+            conditions: Option<serde_json::Value>,
         }
         let rows: Vec<Row> = response.take(0).unwrap_or_default();
         Ok(rows
@@ -1768,7 +1783,10 @@ impl ForumService for SurrealService {
                 expires_at: r
                     .expires_at_ms
                     .and_then(|ms| Utc.timestamp_millis_opt(ms).single()),
-                conditions: Vec::new(),
+                conditions: r
+                    .conditions
+                    .and_then(|value| serde_json::from_value(value).ok())
+                    .unwrap_or_default(),
             })
             .collect())
     }
@@ -1781,18 +1799,21 @@ impl ForumService for SurrealService {
         } else {
             _rule.id
         };
+        let conditions = serde_json::to_value(&_rule.conditions).unwrap_or(serde_json::Value::Null);
         rt.block_on(async {
             self.client
                 .query(
                     r#"
-                    UPDATE ban_rules SET
+                    UPSERT type::thing("ban_rules", $id) SET
+                        id = $id,
                         reason = $reason,
-                        expires_at_ms = $expires
-                    WHERE id = $id;
+                        expires_at_ms = $expires,
+                        conditions = $conditions;
                     "#,
                 )
                 .bind(("reason", _rule.reason.clone()))
                 .bind(("expires", _rule.expires_at.map(|dt| dt.timestamp_millis())))
+                .bind(("conditions", conditions))
                 .bind(("id", rule_id))
                 .await
         })
@@ -1805,7 +1826,7 @@ impl ForumService for SurrealService {
             .map_err(|e| ForumError::Internal(format!("runtime init failed: {e}")))?;
         rt.block_on(async {
             self.client
-                .query("DELETE ban_rules WHERE id = $id;")
+                .query("DELETE ban_rules WHERE meta::id(id) = $id;")
                 .bind(("id", _rule_id))
                 .await
         })
@@ -2073,7 +2094,7 @@ impl ForumService for SurrealService {
             self.client
                 .query(
                     r#"
-                    UPDATE type::thing("pm_preferences", $owner_id) SET
+                    UPSERT type::thing("pm_preferences", $owner_id) SET
                         owner_id = $owner_id,
                         receive_from = $receive_from,
                         notify_level = $notify_level;
@@ -2264,7 +2285,7 @@ impl ForumService for SurrealService {
             self.client
                 .query(
                     r#"
-                    UPDATE type::thing("pm_drafts", $id) SET
+                    UPSERT type::thing("pm_drafts", $id) SET
                         id = $id,
                         owner_id = $owner_id,
                         subject = $subject,

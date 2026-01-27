@@ -16,7 +16,7 @@ pub fn load_permissions<S: ForumService>(
     is_not_banned(service, ctx, false)?;
     let mut groups = ctx.user_info.groups.clone();
     if groups.is_empty() {
-        groups.push(1);
+        groups.push(4);
     }
     let mut grants = Vec::new();
     let mut removals = Vec::new();

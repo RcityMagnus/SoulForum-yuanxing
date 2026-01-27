@@ -1,5 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -443,7 +443,7 @@ pub struct PermissionChange {
     pub allow: bool,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum BanAffects {
     Account { member_id: i64 },
@@ -457,7 +457,7 @@ impl Default for BanAffects {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct BanCondition {
     pub id: i64,
     pub reason: Option<String>,
@@ -465,7 +465,7 @@ pub struct BanCondition {
     pub affects: BanAffects,
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct BanRule {
     pub id: i64,
     pub reason: Option<String>,

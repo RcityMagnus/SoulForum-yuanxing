@@ -944,6 +944,19 @@ fn App() -> Element {
     let is_register = *is_register_page.read();
     let is_login = *is_login_page.read();
     let is_logged_in = !token.read().trim().is_empty();
+    let blog_base = "http://127.0.0.1:3002".to_string();
+    let docs_base = "http://127.0.0.1:3003".to_string();
+    let jwt_for_links = token.read().trim().to_string();
+    let blog_link = if jwt_for_links.is_empty() {
+        blog_base.clone()
+    } else {
+        format!("{}/sso?token={}", blog_base, urlencoding::encode(&jwt_for_links))
+    };
+    let docs_link = if jwt_for_links.is_empty() {
+        docs_base.clone()
+    } else {
+        format!("{}/sso?token={}", docs_base, urlencoding::encode(&jwt_for_links))
+    };
     let display_name = current_user.read().trim().to_string();
     let display_name = if display_name.is_empty() { "Member".to_string() } else { display_name };
     let welcome_text = if is_logged_in {
@@ -995,6 +1008,8 @@ fn App() -> Element {
                         button { class: "nav-tab nav-tab--ghost", onclick: move |_| logout(), "Logout" }
                     }} else { rsx! { } }}
                     a { class: if is_admin { "nav-tab active" } else { "nav-tab" }, href: "/admin", onclick: move |_| { is_admin_page.set(true); is_register_page.set(false); }, "Admin" }
+                    a { class: "nav-tab", href: "{blog_link}", target: "_blank", rel: "noopener noreferrer", "Blog" }
+                    a { class: "nav-tab", href: "{docs_link}", target: "_blank", rel: "noopener noreferrer", "Docs" }
                     a { class: "nav-tab", href: "#", "More" }
                     div { class: "nav-search",
                         input { placeholder: "Search", value: "" }
@@ -1456,7 +1471,6 @@ fn App() -> Element {
                             div { class: "actions",
                                 button { onclick: move |_| load_admin_users(), "刷新用户" }
                                 button { onclick: move |_| load_admin_accounts(), "刷新管理员" }
-                                button { onclick: move |_| load_admin_groups(), "刷新组映射" }
                             }
                         }
                         div {
@@ -1513,6 +1527,25 @@ fn App() -> Element {
                                         }
                                     }
                                 })}
+                            }
+                            h4 { "默认组映射（代码）" }
+                            ul { class: "list",
+                                li { class: "item",
+                                    strong { "管理员" }
+                                    div { class: "meta", "组 #0（代码写死）" }
+                                }
+                                li { class: "item",
+                                    strong { "版主" }
+                                    div { class: "meta", "组 #2（代码写死）" }
+                                }
+                                li { class: "item",
+                                    strong { "普通登录用户" }
+                                    div { class: "meta", "组 #4（代码写死）" }
+                                }
+                                li { class: "item",
+                                    strong { "游客" }
+                                    div { class: "meta", "无组（空）" }
+                                }
                             }
                         }
                     }

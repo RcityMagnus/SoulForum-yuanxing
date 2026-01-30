@@ -2,23 +2,20 @@ use axum::{
     Json, Router,
     body::{Body, Bytes},
     extract::{ConnectInfo, Multipart, Path, Query, State},
-    http::{HeaderMap, HeaderValue, Method, Request, StatusCode, header::{HeaderName, AUTHORIZATION}},
+    http::{HeaderMap, HeaderValue, Method, Request, StatusCode, header::HeaderName},
     middleware::Next,
     response::{Html, IntoResponse, Response},
     routing::{get, post},
 };
 use chrono::Utc;
 use dotenvy::dotenv;
-use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{
     collections::HashMap,
     env,
     net::SocketAddr,
-    path::PathBuf,
     sync::Arc,
-    sync::OnceLock,
     time::{Duration, Instant},
 };
 use tokio::fs;
@@ -29,133 +26,32 @@ use tracing_subscriber::EnvFilter;
 use btc_forum_rust::{
     auth::AuthClaims,
     services::{BoardAccessEntry, ForumError},
-    rainbow_auth::{RainbowAuthClient, RainbowAuthError, RainbowUser},
-    security::load_permissions,
+    rainbow_auth::RainbowAuthClient,
     services::{
         BanAffects, BanCondition, BanRule, ForumContext, ForumService, PersonalMessageFolder,
         SendPersonalMessage, surreal::SurrealService,
     },
-    surreal::{SurrealClient, SurrealForumService, SurrealPost, SurrealTopic, SurrealUser, connect_from_env},
+    surreal::{SurrealForumService, SurrealPost, SurrealTopic, SurrealUser, connect_from_env},
+};
+use btc_forum_shared::{
+    AuthMeResponse, AuthResponse, AuthUser, Board, BoardsResponse,
+    CreateBoardPayload, ErrorCode, LoginRequest, RegisterRequest, RegisterResponse,
 };
 use tower_http::cors::CorsLayer;
 
-#[derive(Clone)]
-struct AppState {
-    surreal: SurrealForumService,
-    forum_service: SurrealService,
-    rainbow_auth: RainbowAuthClient,
-    rate_limiter: Arc<RateLimiter>,
-    start_time: Instant,
-}
+#[path = "../api/mod.rs"]
+mod api;
 
-#[derive(Default)]
-struct RateLimiter {
-    // key -> (count, window_start)
-    limits: std::sync::Mutex<std::collections::HashMap<String, (u32, Instant)>>,
-}
-
-impl RateLimiter {
-    fn new() -> Self {
-        Self {
-            limits: std::sync::Mutex::new(std::collections::HashMap::new()),
-        }
-    }
-
-    fn allow(&self, key: &str, max: u32, window: Duration) -> bool {
-        let mut guard = match self.limits.lock() {
-            Ok(g) => g,
-            Err(poison) => poison.into_inner(),
-        };
-        let now = Instant::now();
-        let entry = guard.entry(key.to_string()).or_insert((0, now));
-        let elapsed = now.duration_since(entry.1);
-        if elapsed >= window {
-            *entry = (1, now);
-            true
-        } else if entry.0 < max {
-            entry.0 += 1;
-            true
-        } else {
-            false
-        }
-    }
-
-    fn snapshot(&self) -> std::collections::HashMap<String, u32> {
-        let guard = match self.limits.lock() {
-            Ok(g) => g,
-            Err(poison) => poison.into_inner(),
-        };
-        guard
-            .iter()
-            .map(|(k, (count, _))| (k.clone(), *count))
-            .collect()
-    }
-}
-
-#[derive(Deserialize)]
-struct RegisterRequest {
-    #[serde(alias = "username")]
-    email: String,
-    password: String,
-    role: Option<String>,
-    permissions: Option<Vec<String>>,
-}
-
-#[derive(Deserialize)]
-struct LoginRequest {
-    #[serde(alias = "username")]
-    email: String,
-    password: String,
-}
-
-static ENFORCE_CSRF: OnceLock<bool> = OnceLock::new();
-static MAX_UPLOAD_MB: OnceLock<i64> = OnceLock::new();
-static ALLOWED_MIME: OnceLock<Option<Vec<String>>> = OnceLock::new();
-
-fn csrf_enabled() -> bool {
-    *ENFORCE_CSRF.get_or_init(|| {
-        env::var("ENFORCE_CSRF")
-            .map(|v| !matches!(v.to_lowercase().as_str(), "0" | "false" | "off"))
-            .unwrap_or(true)
-    })
-}
-
-fn upload_dir() -> PathBuf {
-    PathBuf::from(env::var("UPLOAD_DIR").unwrap_or_else(|_| "uploads".into()))
-}
-
-fn upload_base_url() -> String {
-    env::var("UPLOAD_BASE_URL").unwrap_or_else(|_| "/uploads".into())
-}
-
-fn rainbow_auth_base_url() -> String {
-    env::var("RAINBOW_AUTH_BASE_URL").unwrap_or_else(|_| "http://127.0.0.1:8080".into())
-}
-
-fn max_upload_bytes() -> i64 {
-    *MAX_UPLOAD_MB.get_or_init(|| {
-        env::var("MAX_UPLOAD_MB")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .filter(|v| *v > 0)
-            .unwrap_or(50)
-    }) * 1024 * 1024
-}
-
-fn allowed_mime() -> Option<&'static [String]> {
-    ALLOWED_MIME
-        .get_or_init(|| {
-            env::var("ALLOWED_MIME")
-                .ok()
-                .map(|v| {
-                    v.split(',')
-                        .map(|s| s.trim().to_lowercase())
-                        .filter(|s| !s.is_empty())
-                        .collect::<Vec<_>>()
-                })
-        })
-        .as_deref()
-}
+use api::auth::{bearer_from_headers, ensure_user_ctx, require_auth, user_groups};
+use api::error::{api_error, api_error_from_status, rainbow_auth_error_response};
+use api::guards::{
+    ensure_admin, ensure_board_access, ensure_permission, ensure_permission_for_board,
+    fetch_topic_board_id, enforce_rate, load_board_access, validate_content, verify_csrf,
+};
+use api::state::{
+    allowed_mime, csrf_enabled, find_csrf_cookie, generate_csrf_token, max_upload_bytes,
+    rainbow_auth_base_url, upload_base_url, upload_dir, AppState, RateLimiter,
+};
 
 fn validate_config() {
     let has_secret = env::var("JWT_SECRET").is_ok();
@@ -177,314 +73,17 @@ fn validate_config() {
     }
 }
 
-fn require_auth(claims: &Option<AuthClaims>) -> Result<&AuthClaims, impl IntoResponse> {
-    if let Some(claims) = claims {
-        Ok(claims)
-    } else {
-        Err((
-            StatusCode::UNAUTHORIZED,
-            Json(json!({"status": "error", "message": "authorization required"})),
-        ))
-    }
-}
-
-fn bearer_from_headers(headers: &HeaderMap) -> Option<String> {
-    let header = headers.get(AUTHORIZATION)?;
-    let value = header.to_str().ok()?.trim();
-    let token = value
-        .strip_prefix("Bearer ")
-        .or_else(|| value.strip_prefix("bearer "))?;
-    let token = token.trim();
-    if token.is_empty() { None } else { Some(token.to_string()) }
-}
-
-fn build_ctx_from_user(user: &SurrealUser, claims: &AuthClaims) -> ForumContext {
-    let mut ctx = ForumContext::default();
-    ctx.user_info.is_guest = false;
-    ctx.user_info.name = user.name.clone();
-    ctx.user_info.id = user.legacy_id();
-
-    if let Some(role) = user.role.as_deref().or_else(|| claims.role.as_deref()) {
-        match role {
-            "admin" => ctx.user_info.is_admin = true,
-            "mod" => ctx.user_info.is_mod = true,
-            _ => {}
-        }
-    }
-
-    if let Some(perms) = user
-        .permissions
-        .clone()
-        .or_else(|| claims.permissions.clone())
-    {
-        ctx.user_info.permissions.extend(perms);
-    }
-
-    if ctx.user_info.permissions.is_empty() && !ctx.user_info.is_admin && !ctx.user_info.is_mod {
-        ctx.user_info.permissions.insert("post_new".into());
-        ctx.user_info.permissions.insert("post_reply_any".into());
-    }
-
-    ctx.user_info.groups.clear();
-    if ctx.user_info.is_admin {
-        ctx.user_info.groups.push(0);
-    } else if ctx.user_info.is_mod {
-        ctx.user_info.groups.extend([2]);
-    } else {
-        ctx.user_info.groups.push(4);
-    }
-
-    ctx
-}
-
-async fn ensure_user_ctx(
+async fn run_forum_blocking<T>(
     state: &AppState,
-    claims: &AuthClaims,
-) -> Result<(SurrealUser, ForumContext), (StatusCode, Json<serde_json::Value>)> {
-    let resolved_user = resolve_rainbow_user(state, claims).await;
-    let name = resolved_user
-        .as_ref()
-        .map(|user| user.email.as_str())
-        .unwrap_or(&claims.sub);
-    match state
-        .surreal
-        .ensure_user(
-            name,
-            claims.role.as_deref(),
-            claims.permissions.as_deref(),
-        )
-        .await
-    {
-        Ok(user) => {
-            if let Some(user_info) = resolved_user {
-                let mut user = user;
-                user.name = user_info.email;
-                let ctx = build_ctx_from_user(&user, claims);
-                return Ok((user, ctx));
-            }
-            let ctx = build_ctx_from_user(&user, claims);
-            Ok((user, ctx))
-        }
-        Err(err) => {
-            error!(error = %err, "failed to ensure user");
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": "failed to ensure user"})),
-            ))
-        }
-    }
-}
-
-async fn resolve_rainbow_user(
-    state: &AppState,
-    claims: &AuthClaims,
-) -> Option<RainbowUser> {
-    let token = claims.token.as_deref()?;
-    match state.rainbow_auth.me(token).await {
-        Ok(user) => Some(user),
-        Err(err) => {
-            error!(error = %err, "rainbow-auth user lookup failed");
-            None
-        }
-    }
-}
-
-fn ensure_permission(
-    state: &AppState,
-    ctx: &ForumContext,
-    permission: &str,
-) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
-    if state.forum_service.allowed_to(ctx, permission, None, false) {
-        Ok(())
-    } else {
-        Err((
-            StatusCode::FORBIDDEN,
-            Json(json!({
-                "status": "error",
-                "message": format!("missing permission: {permission}")
-            })),
-        ))
-    }
-}
-
-fn rainbow_auth_error_response(
-    err: RainbowAuthError,
-) -> (StatusCode, Json<serde_json::Value>) {
-    match err {
-        RainbowAuthError::Http { status, message } => (
-            status,
-            Json(json!({"status": "error", "message": message})),
-        ),
-        RainbowAuthError::Transport(message) | RainbowAuthError::Parse(message) => (
-            StatusCode::BAD_GATEWAY,
-            Json(json!({"status": "error", "message": message})),
-        ),
-    }
-}
-
-async fn ensure_permission_for_board(
-    state: &AppState,
-    ctx: &ForumContext,
-    permission: &str,
-    board_id: Option<&str>,
-) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
-    let mut working = ctx.clone();
-    if let Some(board) = board_id {
-        let forum_service = state.forum_service.clone();
-        let board = board.to_string();
-        working = match tokio::task::spawn_blocking(move || {
-            let mut updated = working;
-            load_permissions(&forum_service, &mut updated, Some(board))?;
-            Ok::<ForumContext, ForumError>(updated)
-        })
-        .await
-        .map_err(|err| {
-            error!(error = %err, "failed to load permissions");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": "failed to load permissions"})),
-            )
-        })?
-        {
-            Ok(updated) => updated,
-            Err(err) => {
-                match &err {
-                    ForumError::PermissionDenied(message) => {
-                        return Err((
-                            StatusCode::FORBIDDEN,
-                            Json(json!({"status": "error", "message": message})),
-                        ));
-                    }
-                    _ => {
-                        error!(error = %err, "failed to load permissions");
-                        return Err((
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(json!({"status": "error", "message": "failed to load permissions"})),
-                        ));
-                    }
-                }
-            }
-        };
-    }
-    ensure_permission(state, &working, permission)
-}
-
-fn user_groups(ctx: &ForumContext) -> Vec<i64> {
-    if !ctx.user_info.groups.is_empty() {
-        return ctx.user_info.groups.clone();
-    }
-    if ctx.user_info.is_admin {
-        return vec![0];
-    }
-    if ctx.user_info.is_mod {
-        return vec![2];
-    }
-    vec![4]
-}
-
-async fn load_board_access(state: &AppState) -> Result<Vec<BoardAccessEntry>, ForumError> {
-    let forum_service = state.forum_service.clone();
-    tokio::task::spawn_blocking(move || forum_service.list_board_access())
-        .await
-        .map_err(|e| ForumError::Internal(format!("board access task failed: {e}")))?
-}
-
-async fn run_forum_blocking<R, F>(state: &AppState, job: F) -> Result<R, ForumError>
+    job: impl FnOnce(&SurrealService) -> Result<T, ForumError> + Send + 'static,
+) -> Result<T, ForumError>
 where
-    R: Send + 'static,
-    F: FnOnce(SurrealService) -> Result<R, ForumError> + Send + 'static,
+    T: Send + 'static,
 {
     let forum_service = state.forum_service.clone();
-    tokio::task::spawn_blocking(move || job(forum_service))
+    tokio::task::spawn_blocking(move || job(&forum_service))
         .await
         .map_err(|e| ForumError::Internal(format!("forum task failed: {e}")))?
-}
-
-async fn ensure_board_access(
-    state: &AppState,
-    ctx: &ForumContext,
-    board_id: &str,
-) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
-    if ctx.user_info.is_admin {
-        return Ok(());
-    }
-    let entries: Vec<BoardAccessEntry> = match load_board_access(state).await {
-        Ok(entries) => entries,
-        Err(err) => {
-            error!(error = %err, "failed to load board access");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": "failed to load board access"})),
-            ));
-        }
-    };
-    let Some(entry) = entries.iter().find(|e| e.id == board_id) else {
-        return Ok(()); // no explicit rule: allow
-    };
-    if entry.allowed_groups.is_empty() {
-        return Ok(());
-    }
-    let groups = user_groups(ctx);
-    if entry
-        .allowed_groups
-        .iter()
-        .any(|gid| groups.iter().any(|g| g == gid))
-    {
-        return Ok(());
-    }
-    Err((
-        StatusCode::FORBIDDEN,
-        Json(json!({"status": "error", "message": "board access denied"})),
-    ))
-}
-
-async fn fetch_topic_board_id(client: &SurrealClient, topic_id: &str) -> Option<String> {
-    let topic_id_owned = topic_id.to_string();
-    let mut response = client
-        .query(
-            r#"
-            SELECT board_id FROM type::thing("topics", $id) LIMIT 1;
-            "#,
-        )
-        .bind(("id", topic_id_owned))
-        .await
-        .ok()?;
-    #[derive(Deserialize)]
-    struct Row {
-        board_id: Option<String>,
-    }
-    let rows: Vec<Row> = response.take(0).ok()?;
-    rows.into_iter().find_map(|r| r.board_id)
-}
-
-fn ensure_admin(ctx: &ForumContext) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
-    if ctx.user_info.is_admin || ctx.user_info.permissions.contains("admin") {
-        Ok(())
-    } else {
-        Err((
-            StatusCode::FORBIDDEN,
-            Json(json!({"status": "error", "message": "admin permission required"})),
-        ))
-    }
-}
-
-fn enforce_rate(
-    state: &AppState,
-    key: &str,
-    limit: u32,
-    window: Duration,
-) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
-    if state.rate_limiter.allow(key, limit, window) {
-        Ok(())
-    } else {
-        Err((
-            StatusCode::TOO_MANY_REQUESTS,
-            Json(json!({
-                "status": "error",
-                "message": "rate limit exceeded"
-            })),
-        ))
-    }
 }
 
 fn rate_key(claims: &AuthClaims, addr: Option<&std::net::SocketAddr>) -> String {
@@ -493,82 +92,6 @@ fn rate_key(claims: &AuthClaims, addr: Option<&std::net::SocketAddr>) -> String 
     } else {
         claims.sub.clone()
     }
-}
-
-fn generate_csrf_token() -> String {
-    let mut bytes = [0u8; 32];
-    OsRng.fill_bytes(&mut bytes);
-    bytes.iter().map(|b| format!("{:02x}", b)).collect()
-}
-
-fn find_csrf_cookie(headers: &HeaderMap) -> Option<String> {
-    headers
-        .get(axum::http::header::COOKIE)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|cookie| {
-            cookie
-                .split(';')
-                .find_map(|part| part.trim().strip_prefix("XSRF-TOKEN="))
-                .map(|v| v.to_string())
-        })
-}
-
-fn verify_csrf(headers: &HeaderMap) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
-    // Simple double-submit style check: X-CSRF-TOKEN must equal Cookie XSRF-TOKEN.
-    let header_token = headers
-        .get("x-csrf-token")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or_default();
-    if header_token.is_empty() {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(json!({"status": "error", "message": "missing csrf token"})),
-        ));
-    }
-    if let (Some(header_token), Some(cookie_header)) = (
-        headers.get("x-csrf-token"),
-        headers.get(axum::http::header::COOKIE),
-    ) {
-        let header_val = header_token.to_str().unwrap_or_default();
-        let cookie_val = cookie_header.to_str().unwrap_or_default();
-        let mut ok = false;
-        for part in cookie_val.split(';') {
-            let trimmed = part.trim();
-            if let Some(rest) = trimmed.strip_prefix("XSRF-TOKEN=") {
-                if rest == header_val {
-                    ok = true;
-                    break;
-                }
-            }
-        }
-        if !ok {
-            return Err((
-                StatusCode::FORBIDDEN,
-                Json(json!({"status": "error", "message": "csrf token mismatch"})),
-            ));
-        }
-    }
-    Ok(())
-}
-fn validate_content(
-    subject: &str,
-    body: &str,
-) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
-    let s = subject.trim();
-    let b = body.trim();
-    if s.is_empty() || s.len() > 200 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "subject must be 1..200 chars"})),
-        ));
-    }
-    if b.is_empty() || b.len() > 10_000 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "body must be 1..10000 chars"})),
-        ));
-    }
-    Ok(())
 }
 
 async fn csrf_layer(mut req: Request<Body>, next: Next) -> Response {
@@ -637,22 +160,22 @@ mod tests {
 
     #[test]
     fn validate_content_ok() {
-        assert!(validate_content("hello", "body").is_ok());
+        assert!(api::guards::validate_content("hello", "body").is_ok());
     }
 
     #[test]
     fn validate_content_empty_subject_err() {
-        assert!(validate_content("", "body").is_err());
+        assert!(api::guards::validate_content("", "body").is_err());
     }
 
     #[test]
     fn validate_content_empty_body_err() {
-        assert!(validate_content("hello", " ").is_err());
+        assert!(api::guards::validate_content("hello", " ").is_err());
     }
 
     #[test]
     fn require_auth_rejects_missing_claims() {
-        let result = require_auth(&None);
+        let result = api::auth::require_auth(&None);
         assert!(result.is_err());
     }
 
@@ -664,12 +187,12 @@ mod tests {
             axum::http::header::COOKIE,
             HeaderValue::from_static("XSRF-TOKEN=def"),
         );
-        assert!(verify_csrf(&headers).is_err());
+        assert!(api::guards::verify_csrf(&headers).is_err());
     }
 
     #[test]
     fn rate_limiter_hits_limit() {
-        let limiter = RateLimiter::new();
+        let limiter = api::state::RateLimiter::new();
         let key = "user1";
         assert!(limiter.allow(key, 2, Duration::from_secs(60)));
         assert!(limiter.allow(key, 2, Duration::from_secs(60)));
@@ -886,23 +409,27 @@ async fn register(
     State(state): State<AppState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<RegisterRequest>,
-) -> impl IntoResponse {
+) -> Response {
     let key = format!("register:{}", addr.ip());
     if let Err(resp) = enforce_rate(&state, &key, 5, Duration::from_secs(60)) {
-        return resp;
+        return resp.into_response();
     }
     let email = payload.email.trim();
     if email.is_empty() || !email.contains('@') {
-        return (
+        return api_error(
             StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "valid email required"})),
-        );
+            ErrorCode::Validation,
+            "valid email required",
+        )
+        .into_response();
     }
     if payload.password.len() < 6 || payload.password.len() > 128 {
-        return (
+        return api_error(
             StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "password must be 6-128 chars"})),
-        );
+            ErrorCode::Validation,
+            "password must be 6-128 chars",
+        )
+        .into_response();
     }
 
     match state
@@ -912,12 +439,13 @@ async fn register(
     {
         Ok(message) => (
             StatusCode::OK,
-            Json(json!({
-                "status": "ok",
-                "message": message
-            })),
-        ),
-        Err(err) => rainbow_auth_error_response(err),
+            Json(RegisterResponse {
+                status: "ok".to_string(),
+                message,
+            }),
+        )
+            .into_response(),
+        Err(err) => rainbow_auth_error_response(err).into_response(),
     }
 }
 
@@ -925,17 +453,14 @@ async fn login(
     State(state): State<AppState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(payload): Json<LoginRequest>,
-) -> impl IntoResponse {
+) -> Response {
     let key = format!("login:{}", addr.ip());
     if let Err(resp) = enforce_rate(&state, &key, 10, Duration::from_secs(60)) {
-        return resp;
+        return resp.into_response();
     }
     let email = payload.email.trim();
     if email.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "email required"})),
-        );
+        return api_error_from_status(StatusCode::BAD_REQUEST, "email required").into_response();
     }
 
     match state
@@ -952,37 +477,42 @@ async fn login(
                 Ok(user) => user,
                 Err(err) => {
                     error!(error = %err, "failed to ensure user after login");
-                    return (
+                    return api_error(
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!({"status": "error", "message": "failed to sync user"})),
-                    );
+                        ErrorCode::Internal,
+                        "failed to sync user",
+                    )
+                    .into_response();
                 }
             };
             let member_id = forum_user.legacy_id();
             (
                 StatusCode::OK,
-                Json(json!({
-                    "status": "ok",
-                    "token": login.token,
-                    "user": {
-                        "name": login.user.email,
-                        "role": null,
-                        "permissions": Vec::<String>::new(),
-                        "member_id": member_id,
-                    }
-                })),
+                Json(AuthResponse {
+                    status: "ok".to_string(),
+                    token: login.token,
+                    user: AuthUser {
+                        name: login.user.email,
+                        role: None,
+                        permissions: Some(Vec::new()),
+                        member_id: Some(member_id),
+                    },
+                }),
             )
+                .into_response()
         }
-        Err(err) => rainbow_auth_error_response(err),
+        Err(err) => rainbow_auth_error_response(err).into_response(),
     }
 }
 
-async fn auth_me(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+async fn auth_me(State(state): State<AppState>, headers: HeaderMap) -> Response {
     let Some(token) = bearer_from_headers(&headers) else {
-        return (
+        return api_error(
             StatusCode::UNAUTHORIZED,
-            Json(json!({"status": "error", "message": "authorization required"})),
-        );
+            ErrorCode::Unauthorized,
+            "authorization required",
+        )
+        .into_response();
     };
 
     match state.rainbow_auth.me(&token).await {
@@ -1000,18 +530,19 @@ async fn auth_me(State(state): State<AppState>, headers: HeaderMap) -> impl Into
             };
             (
                 StatusCode::OK,
-                Json(json!({
-                    "status": "ok",
-                    "user": {
-                        "name": user.email,
-                        "role": null,
-                        "permissions": Vec::<String>::new(),
-                        "member_id": member_id,
-                    }
-                })),
+                Json(AuthMeResponse {
+                    status: "ok".to_string(),
+                    user: AuthUser {
+                        name: user.email,
+                        role: None,
+                        permissions: Some(Vec::new()),
+                        member_id: Some(member_id),
+                    },
+                }),
             )
+                .into_response()
         }
-        Err(err) => rainbow_auth_error_response(err),
+        Err(err) => rainbow_auth_error_response(err).into_response(),
     }
 }
 
@@ -1101,9 +632,9 @@ async fn demo_surreal(
             .into_response(),
         Err(err) => {
             error!(error = %err, "surreal demo failed");
-            (
+            api_error_from_status(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
+                err.to_string(),
             )
                 .into_response()
         }
@@ -1169,9 +700,9 @@ async fn surreal_post(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to create surreal post");
-            (
+            api_error_from_status(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
+                err.to_string(),
             )
                 .into_response()
         }
@@ -1193,19 +724,14 @@ async fn surreal_posts(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to list surreal posts");
-            (
+            api_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
+                ErrorCode::Internal,
+                err.to_string(),
             )
                 .into_response()
         }
     }
-}
-
-#[derive(Deserialize)]
-struct CreateBoardPayload {
-    name: String,
-    description: Option<String>,
 }
 
 async fn create_surreal_board(
@@ -1227,11 +753,12 @@ async fn create_surreal_board(
         return resp.into_response();
     }
     if payload.name.trim().is_empty() || payload.name.trim().len() > 100 {
-        return (
+        return api_error(
             StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "name must be 1..100 chars"})),
+            ErrorCode::Validation,
+            "name must be 1..100 chars",
         )
-            .into_response();
+        .into_response();
     }
     if let Err(resp) = ensure_permission(&state, &ctx, "manage_boards") {
         return resp.into_response();
@@ -1248,9 +775,10 @@ async fn create_surreal_board(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to create board");
-            (
+            api_error(
                 StatusCode::BAD_REQUEST,
-                Json(json!({"status": "error", "message": err.to_string()})),
+                ErrorCode::Validation,
+                err.to_string(),
             )
                 .into_response()
         }
@@ -1287,20 +815,40 @@ async fn surreal_boards(
                             true
                         }
                     })
+                    .map(|b| Board {
+                        id: b.id,
+                        name: b.name,
+                        description: b.description,
+                        created_at: b.created_at,
+                        updated_at: None,
+                    })
                     .collect(),
-                None => boards,
+                None => boards
+                    .into_iter()
+                    .map(|b| Board {
+                        id: b.id,
+                        name: b.name,
+                        description: b.description,
+                        created_at: b.created_at,
+                        updated_at: None,
+                    })
+                    .collect(),
             };
             (
                 StatusCode::OK,
-                Json(json!({"status": "ok", "boards": filtered})),
+                Json(BoardsResponse {
+                    status: "ok".to_string(),
+                    boards: filtered,
+                }),
             )
                 .into_response()
         }
         Err(err) => {
             error!(error = %err, "failed to list boards");
-            (
+            api_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
+                ErrorCode::Internal,
+                err.to_string(),
             )
                 .into_response()
         }
@@ -1380,9 +928,10 @@ async fn create_surreal_topic(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to create topic");
-            (
+            api_error(
                 StatusCode::BAD_REQUEST,
-                Json(json!({"status": "error", "message": err.to_string()})),
+                ErrorCode::Validation,
+                err.to_string(),
             )
                 .into_response()
         }
@@ -1416,9 +965,10 @@ async fn list_surreal_topics(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to list topics");
-            (
+            api_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
+                ErrorCode::Internal,
+                err.to_string(),
             )
                 .into_response()
         }
@@ -1490,9 +1040,10 @@ async fn create_surreal_topic_post(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to create post");
-            (
+            api_error(
                 StatusCode::BAD_REQUEST,
-                Json(json!({"status": "error", "message": err.to_string()})),
+                ErrorCode::Validation,
+                err.to_string(),
             )
                 .into_response()
         }
@@ -1528,9 +1079,10 @@ async fn list_surreal_posts_for_topic(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to list posts");
-            (
+            api_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
+                ErrorCode::Internal,
+                err.to_string(),
             )
                 .into_response()
         }
@@ -1606,17 +1158,11 @@ async fn create_notification(
         claims.sub.clone()
     };
     if payload.subject.trim().is_empty() || payload.subject.len() > 200 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "subject must be 1-200 chars"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "subject must be 1-200 chars")
             .into_response();
     }
     if payload.body.trim().is_empty() || payload.body.len() > 4000 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "body must be 1-4000 chars"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "body must be 1-4000 chars")
             .into_response();
     }
     match state
@@ -1631,10 +1177,7 @@ async fn create_notification(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to create notification");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -1654,10 +1197,7 @@ async fn mark_notification_read(
         return resp.into_response();
     }
     if payload.id.trim().is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "id required"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "id required")
             .into_response();
     }
     match state
@@ -1672,10 +1212,7 @@ async fn mark_notification_read(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to mark notification read");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -1698,10 +1235,7 @@ async fn list_attachments(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to list attachments");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -1726,27 +1260,18 @@ async fn create_attachment_meta(
         return resp.into_response();
     }
     if payload.filename.trim().is_empty() || payload.filename.len() > 255 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "filename must be 1-255 chars"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "filename must be 1-255 chars")
             .into_response();
     }
     if payload.size_bytes < 0 || payload.size_bytes > max_upload_bytes() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "size_bytes invalid"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "size_bytes invalid")
             .into_response();
     }
     if let Some(list) = allowed_mime() {
         if let Some(mt) = payload.mime_type.as_deref() {
             let mt_lower = mt.to_lowercase();
             if !list.iter().any(|allowed| mt_lower.starts_with(allowed)) {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({"status": "error", "message": "mime_type not allowed"})),
-                )
+                return api_error_from_status(StatusCode::BAD_REQUEST, "mime_type not allowed")
                     .into_response();
             }
         }
@@ -1771,10 +1296,7 @@ async fn create_attachment_meta(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to create attachment meta");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -1815,10 +1337,7 @@ async fn upload_attachment(
                     Ok(bytes) => file_bytes = Some(bytes),
                     Err(err) => {
                         error!(error = %err, "failed to read upload");
-                        return (
-                            StatusCode::BAD_REQUEST,
-                            Json(json!({"status": "error", "message": "failed to read upload"})),
-                        )
+                        return api_error_from_status(StatusCode::BAD_REQUEST, "failed to read upload")
                             .into_response();
                     }
                 }
@@ -1838,30 +1357,21 @@ async fn upload_attachment(
     }
 
     let Some(bytes) = file_bytes else {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "missing file field"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "missing file field")
             .into_response();
     };
     let raw_name = file_name.unwrap_or_else(|| "upload.bin".into());
     let safe_name = sanitize_filename(&raw_name);
     let size_bytes = bytes.len() as i64;
     if size_bytes == 0 || size_bytes > max_upload_bytes() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "file size must be 1..max"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "file size must be 1..max")
             .into_response();
     }
     if let Some(list) = allowed_mime() {
         if let Some(mt) = mime.clone() {
             let mt_lower = mt.to_lowercase();
             if !list.iter().any(|allowed| mt_lower.starts_with(allowed)) {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({"status": "error", "message": "mime_type not allowed"})),
-                )
+                return api_error_from_status(StatusCode::BAD_REQUEST, "mime_type not allowed")
                     .into_response();
             }
         }
@@ -1870,10 +1380,7 @@ async fn upload_attachment(
     let dir = upload_dir();
     if let Err(err) = fs::create_dir_all(&dir).await {
         error!(error = %err, "failed to create upload dir");
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"status": "error", "message": "server cannot create upload dir"})),
-        )
+        return api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, "server cannot create upload dir")
             .into_response();
     }
 
@@ -1900,10 +1407,7 @@ async fn upload_attachment(
 
     if let Err(err) = fs::write(&path, &bytes).await {
         error!(error = %err, "failed to write upload");
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"status": "error", "message": "failed to write upload"})),
-        )
+        return api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, "failed to write upload")
             .into_response();
     }
 
@@ -1933,10 +1437,7 @@ async fn upload_attachment(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to store attachment meta");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -1971,10 +1472,7 @@ async fn delete_attachment_api(
         .and_then(|s| s.parse::<i64>().ok())
         .unwrap_or(0);
     if id_num <= 0 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "invalid id"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "invalid id")
             .into_response();
     }
     // Only owner or admin can delete.
@@ -1982,19 +1480,13 @@ async fn delete_attachment_api(
         match state.surreal.list_attachments_for_user(&claims.sub).await {
             Ok(items) => {
                 if !items.iter().any(|a| a.id.as_deref() == Some(&payload.id)) {
-                    return (
-                        StatusCode::FORBIDDEN,
-                        Json(json!({"status": "error", "message": "not allowed to delete"})),
-                    )
+                    return api_error_from_status(StatusCode::FORBIDDEN, "not allowed to delete")
                         .into_response();
                 }
             }
             Err(err) => {
                 error!(error = %err, "failed to load attachments for delete");
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(json!({"status": "error", "message": "cannot verify ownership"})),
-                )
+                return api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, "cannot verify ownership")
                     .into_response();
             }
         }
@@ -2007,10 +1499,7 @@ async fn delete_attachment_api(
             .into_response(),
         Err(err) => {
             error!(error = %err, user = %claims.sub, "failed to delete attachment");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2073,10 +1562,7 @@ async fn list_personal_messages(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to list personal messages");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2096,24 +1582,15 @@ async fn send_personal_message_api(
         return resp.into_response();
     }
     if payload.to.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "recipient required"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "recipient required")
             .into_response();
     }
     if payload.subject.trim().is_empty() || payload.subject.len() > 200 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "subject must be 1-200 chars"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "subject must be 1-200 chars")
             .into_response();
     }
     if payload.body.trim().is_empty() || payload.body.len() > 4000 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "body must be 1-4000 chars"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "body must be 1-4000 chars")
             .into_response();
     }
     let (user, ctx) = match ensure_user_ctx(&state, &claims).await {
@@ -2136,10 +1613,7 @@ async fn send_personal_message_api(
     .await {
         Ok(ids) => ids,
         Err(err) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            return api_error_from_status(StatusCode::BAD_REQUEST, err.to_string())
                 .into_response();
         }
     };
@@ -2160,10 +1634,7 @@ async fn send_personal_message_api(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to send personal message");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2183,10 +1654,7 @@ async fn mark_personal_messages_read(
         return resp.into_response();
     }
     if payload.ids.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "ids required"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "ids required")
             .into_response();
     }
     let (_user, ctx) = match ensure_user_ctx(&state, &claims).await {
@@ -2202,10 +1670,7 @@ async fn mark_personal_messages_read(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to mark personal messages read");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2225,10 +1690,7 @@ async fn delete_personal_messages_api(
         return resp.into_response();
     }
     if payload.ids.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "ids required"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "ids required")
             .into_response();
     }
     let (_user, ctx) = match ensure_user_ctx(&state, &claims).await {
@@ -2247,10 +1709,7 @@ async fn delete_personal_messages_api(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to delete personal messages");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2273,10 +1732,7 @@ async fn list_notifications(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to list notifications");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2323,10 +1779,7 @@ async fn demo_post(State(state): State<AppState>, claims: Option<AuthClaims>) ->
             })),
         )
             .into_response(),
-        Err(err) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"status": "error", "message": err.to_string()})),
-        )
+        Err(err) => api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
             .into_response(),
     }
 }
@@ -2368,10 +1821,7 @@ async fn list_users(
         }
         Err(err) => {
             error!(error = %err, "failed to list members");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2423,10 +1873,7 @@ async fn list_admins(
         Ok(resp) => resp,
         Err(err) => {
             error!(error = %err, "failed to list admin users");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            return api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response();
         }
     };
@@ -2435,10 +1882,7 @@ async fn list_admins(
         Ok(value) => value,
         Err(err) => {
             error!(error = %err, "failed to parse admin users");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            return api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response();
         }
     };
@@ -2492,10 +1936,7 @@ async fn list_groups(
         }
         Err(err) => {
             error!(error = %err, "failed to list membergroups");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2570,17 +2011,11 @@ async fn admin_notify(
         return resp.into_response();
     }
     if payload.user_ids.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "user_ids required"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "user_ids required")
             .into_response();
     }
     if payload.user_ids.len() > 50 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "user_ids too many (max 50)"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "user_ids too many (max 50)")
             .into_response();
     }
     if let Err(resp) = validate_content(&payload.subject, &payload.body) {
@@ -2613,10 +2048,7 @@ async fn admin_notify(
                 forum.log_action("admin_notify_error", None, &log_payload)
             })
             .await;
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2657,7 +2089,7 @@ async fn list_bans(
                 let mut ips = Vec::new();
                 for cond in &ban.conditions {
                     match &cond.affects {
-                        BanAffects::Account { member_id } => member_ids.push(*member_id),
+                        BanAffects::Account { member_id } => member_ids.push(member_id),
                         BanAffects::Email { value } => emails.push(value.clone()),
                         BanAffects::Ip { value } => ips.push(value.clone()),
                     }
@@ -2690,10 +2122,7 @@ async fn list_bans(
         }
         Err(err) => {
             error!(error = %err, "failed to list bans");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2721,10 +2150,7 @@ async fn apply_ban(
     }
     let member_id = payload.member_id.unwrap_or(0);
     if member_id == 0 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "member_id required"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "member_id required")
             .into_response();
     }
     let hours = payload.hours.unwrap_or(24).clamp(1, 24 * 365);
@@ -2751,10 +2177,7 @@ async fn apply_ban(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to apply ban");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2782,10 +2205,7 @@ async fn revoke_ban(
     }
     let ban_id = payload.ban_id.or(payload.member_id).unwrap_or(0);
     if ban_id == 0 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "ban_id required"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "ban_id required")
             .into_response();
     }
     match run_forum_blocking(&state, move |forum| forum.delete_ban_rule(ban_id)).await {
@@ -2796,10 +2216,7 @@ async fn revoke_ban(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to revoke ban");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2825,10 +2242,7 @@ async fn list_action_logs(
         Ok(logs) => (StatusCode::OK, Json(json!({"status": "ok", "logs": logs}))).into_response(),
         Err(err) => {
             error!(error = %err, "failed to list action logs");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2857,10 +2271,7 @@ async fn get_board_access(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to list board access");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2887,10 +2298,7 @@ async fn update_board_access(
         return resp.into_response();
     }
     if payload.allowed_groups.len() > 1000 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "too many groups"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "too many groups")
             .into_response();
     }
     let board_id = payload.board_id.clone();
@@ -2903,10 +2311,7 @@ async fn update_board_access(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to update board access");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }
@@ -2949,10 +2354,7 @@ async fn get_board_permissions(
         Ok(resp) => resp,
         Err(err) => {
             error!(error = %err, "failed to list board permissions");
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            return api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response();
         }
     };
@@ -2985,10 +2387,7 @@ async fn update_board_permissions(
         return resp.into_response();
     }
     if payload.allow.len() + payload.deny.len() > 500 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"status": "error", "message": "too many permissions"})),
-        )
+        return api_error_from_status(StatusCode::BAD_REQUEST, "too many permissions")
             .into_response();
     }
 
@@ -3024,10 +2423,7 @@ async fn update_board_permissions(
             .into_response(),
         Err(err) => {
             error!(error = %err, "failed to update board permissions");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"status": "error", "message": err.to_string()})),
-            )
+            api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
                 .into_response()
         }
     }

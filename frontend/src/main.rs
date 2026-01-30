@@ -5,6 +5,14 @@ use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 use web_sys::wasm_bindgen::JsCast;
 use web_sys::{FormData, HtmlDocument, HtmlInputElement, File};
+use btc_forum_shared::{
+    ApiError, AuthMeResponse, AuthResponse, AuthUser, Board, BoardsResponse, CreateBoardPayload,
+    LoginRequest, RegisterRequest, RegisterResponse,
+};
+mod api {
+    pub mod errors;
+}
+use api::errors::format_api_error;
 
 fn main() {
     launch(App);
@@ -13,15 +21,6 @@ fn main() {
 const BUILD_TAG: &str = "ban-click-v2";
 
 // ---------- Types ----------
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-struct Board {
-    id: Option<String>,
-    name: String,
-    description: Option<String>,
-    created_at: Option<String>,
-    updated_at: Option<String>,
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 struct Topic {
     id: Option<String>,
@@ -44,8 +43,6 @@ struct Post {
 }
 
 #[derive(Deserialize)]
-struct BoardsResponse { status: String, boards: Vec<Board> }
-#[derive(Deserialize)]
 struct TopicsResponse { status: String, topics: Vec<Topic> }
 #[derive(Deserialize)]
 struct PostsResponse { status: String, posts: Vec<Post> }
@@ -54,14 +51,6 @@ struct TopicCreateResponse { status: String, topic: Topic, first_post: Post }
 #[derive(Deserialize)]
 struct PostResponse { status: String, post: Post }
 
-#[derive(Deserialize)]
-struct AuthResponse { status: String, token: String, user: AuthUser }
-#[derive(Deserialize)]
-struct AuthUser { name: String, role: Option<String>, permissions: Option<Vec<String>>, member_id: Option<i64> }
-#[derive(Deserialize)]
-struct RegisterResponse { status: String, message: String }
-#[derive(Deserialize)]
-struct AuthMeResponse { status: String, user: AuthUser }
 #[derive(Clone, Debug, Deserialize)]
 struct AdminUser { id: i64, name: String, primary_group: Option<i64>, additional_groups: Vec<i64>, warning: i32 }
 #[derive(Deserialize)]
@@ -146,12 +135,6 @@ struct BanRuleView {
 struct BanListResponse { status: String, bans: Vec<BanRuleView> }
 
 #[derive(Serialize)]
-struct LoginPayload { email: String, password: String }
-#[derive(Serialize)]
-struct RegisterPayload { email: String, password: String }
-#[derive(Serialize)]
-struct CreateBoardPayload { name: String, description: Option<String> }
-#[derive(Serialize)]
 struct CreateTopicPayload { board_id: String, subject: String, body: String }
 #[derive(Serialize)]
 struct CreatePostPayload { topic_id: String, board_id: String, subject: Option<String>, body: String }
@@ -175,7 +158,12 @@ async fn get_json<T: DeserializeOwned>(base: &str, path: &str, token: &str, csrf
     let resp = req.send().await.map_err(|e| format!("网络错误: {e}"))?;
     let status = resp.status();
     let text = resp.text().await.map_err(|e| format!("读取响应失败: {e}"))?;
-    if !resp.ok() { return Err(format!("HTTP {status}: {text}")); }
+    if !resp.ok() {
+        if let Ok(err) = serde_json::from_str::<ApiError>(&text) {
+            return Err(format_api_error(status, err));
+        }
+        return Err(format!("HTTP {status}: {text}"));
+    }
     serde_json::from_str(&text).map_err(|e| format!("解析失败: {e}，原始响应: {text}"))
 }
 
@@ -189,7 +177,12 @@ async fn post_json<T: DeserializeOwned, B: Serialize>(base: &str, path: &str, to
     let resp = req.header("Content-Type", "application/json").body(serde_json::to_string(body).unwrap()).send().await.map_err(|e| format!("网络错误: {e}"))?;
     let status = resp.status();
     let text = resp.text().await.map_err(|e| format!("读取响应失败: {e}"))?;
-    if !resp.ok() { return Err(format!("HTTP {status}: {text}")); }
+    if !resp.ok() {
+        if let Ok(err) = serde_json::from_str::<ApiError>(&text) {
+            return Err(format_api_error(status, err));
+        }
+        return Err(format!("HTTP {status}: {text}"));
+    }
     serde_json::from_str(&text).map_err(|e| format!("解析失败: {e}，原始响应: {text}"))
 }
 
@@ -273,7 +266,7 @@ fn App() -> Element {
         }
         spawn(async move {
             status.set("登录中...".into());
-            let payload = LoginPayload { email: user.clone(), password: pass.clone() };
+            let payload = LoginRequest { email: user.clone(), password: pass.clone() };
             match post_json::<AuthResponse, _>(&base, "/auth/login", "", "", &payload).await {
                 Ok(resp) => {
                     save_token_to_storage(&resp.token);
@@ -311,7 +304,12 @@ fn App() -> Element {
         }
         spawn(async move {
             status.set("注册中...".into());
-            let payload = RegisterPayload { email: user.clone(), password: pass.clone() };
+            let payload = RegisterRequest {
+                email: user.clone(),
+                password: pass.clone(),
+                role: None,
+                permissions: None,
+            };
             match post_json::<RegisterResponse, _>(&base, "/auth/register", "", "", &payload).await {
                 Ok(resp) => {
                     status.set(resp.message);
@@ -1008,8 +1006,8 @@ fn App() -> Element {
                         button { class: "nav-tab nav-tab--ghost", onclick: move |_| logout(), "Logout" }
                     }} else { rsx! { } }}
                     a { class: if is_admin { "nav-tab active" } else { "nav-tab" }, href: "/admin", onclick: move |_| { is_admin_page.set(true); is_register_page.set(false); }, "Admin" }
-                    a { class: "nav-tab", href: "{blog_link}", target: "_blank", rel: "noopener noreferrer", "Blog" }
-                    a { class: "nav-tab", href: "{docs_link}", target: "_blank", rel: "noopener noreferrer", "Docs" }
+                    a { class: "nav-tab", href: "{blog_link}", "Blog" }
+                    a { class: "nav-tab", href: "{docs_link}", "Docs" }
                     a { class: "nav-tab", href: "#", "More" }
                     div { class: "nav-search",
                         input { placeholder: "Search", value: "" }

@@ -24,6 +24,7 @@ test
 
 ## 文档索引
 - API 速览：`docs/api.md`
+- API 错误码：`docs/api_errors.md`
 - 部署与配置：`docs/deployment.md`
 - Dioxus 前端：`docs/frontend.md`
 - Surreal Schema：`docs/surreal_schema.md`

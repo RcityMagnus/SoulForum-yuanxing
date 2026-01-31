@@ -8,7 +8,7 @@ use std::{
 
 use btc_forum_rust::{
     rainbow_auth::RainbowAuthClient,
-    services::surreal::SurrealService,
+    services::{ForumError, surreal::SurrealService},
     surreal::SurrealForumService,
 };
 
@@ -130,4 +130,17 @@ pub(crate) fn find_csrf_cookie(headers: &axum::http::HeaderMap) -> Option<String
                 .find_map(|part| part.trim().strip_prefix("XSRF-TOKEN="))
                 .map(|v| v.to_string())
         })
+}
+
+pub(crate) async fn run_forum_blocking<T>(
+    state: &AppState,
+    job: impl FnOnce(&SurrealService) -> Result<T, ForumError> + Send + 'static,
+) -> Result<T, ForumError>
+where
+    T: Send + 'static,
+{
+    let forum_service = state.forum_service.clone();
+    tokio::task::spawn_blocking(move || job(&forum_service))
+        .await
+        .map_err(|e| ForumError::Internal(format!("forum task failed: {e}")))?
 }

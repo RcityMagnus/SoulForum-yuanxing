@@ -1,0 +1,8 @@
+[application]
+name = "btc-forum-frontend"
+default_platform = "web"
+asset_dir = "public"
+out_dir = "dist"
+
+[web.app]
+title = "BTC Forum (Dioxus)"

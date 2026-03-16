@@ -27,7 +27,7 @@ impl<S: ForumService> BoardAccessController<S> {
         Ok(())
     }
 
-    pub fn save_for_group(&self, group_id: i64, allowed_boards: &[i64]) -> ServiceResult<()> {
+    pub fn save_for_group(&self, group_id: i64, allowed_boards: &[String]) -> ServiceResult<()> {
         let all = self.service.list_board_access()?;
         for board in all {
             let mut groups = board.allowed_groups;
@@ -38,7 +38,7 @@ impl<S: ForumService> BoardAccessController<S> {
             } else {
                 groups.retain(|gid| gid != &group_id);
             }
-            self.service.set_board_access(board.id, &groups)?;
+            self.service.set_board_access(&board.id, &groups)?;
         }
         Ok(())
     }
@@ -55,15 +55,13 @@ mod tests {
         let controller = BoardAccessController::new(service.clone());
         let mut ctx = ForumContext::default();
         controller.list_for_group(&mut ctx, 1).unwrap();
-        controller.save_for_group(1, &[1]).unwrap();
+        controller.save_for_group(1, &["1".into()]).unwrap();
         let boards = service.list_board_access().unwrap();
-        assert!(
-            boards
-                .iter()
-                .find(|board| board.id == 1)
-                .unwrap()
-                .allowed_groups
-                .contains(&1)
-        );
+        assert!(boards
+            .iter()
+            .find(|board| board.id == "1")
+            .unwrap()
+            .allowed_groups
+            .contains(&1));
     }
 }

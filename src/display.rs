@@ -30,10 +30,7 @@ impl<S: ForumService> DisplayController<S> {
             .service
             .fetch_topic_messages(topic_id, start, per_page)?;
 
-        let rendered: Vec<_> = messages
-            .iter()
-            .map(|msg| render_message(ctx, msg))
-            .collect();
+        let rendered: Vec<_> = messages.iter().map(|msg| render_message(ctx, msg)).collect();
         ctx.context.set("messages", rendered);
         ctx.context.set("page_start", start);
         ctx.context.set("messages_per_page", per_page);

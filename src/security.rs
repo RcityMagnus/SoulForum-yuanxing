@@ -7,7 +7,7 @@ use std::collections::HashSet;
 pub fn load_permissions<S: ForumService>(
     service: &S,
     ctx: &mut ForumContext,
-    board_id: Option<i64>,
+    board_id: Option<String>,
 ) -> ServiceResult<()> {
     if ctx.user_info.is_admin {
         ban_permissions(ctx);
@@ -16,7 +16,7 @@ pub fn load_permissions<S: ForumService>(
     is_not_banned(service, ctx, false)?;
     let mut groups = ctx.user_info.groups.clone();
     if groups.is_empty() {
-        groups.push(0);
+        groups.push(4);
     }
     let mut grants = Vec::new();
     let mut removals = Vec::new();
@@ -27,7 +27,7 @@ pub fn load_permissions<S: ForumService>(
     );
     if let Some(board) = board_id {
         apply_changes(
-            &service.board_permissions(board, &groups)?,
+            &service.board_permissions(&board, &groups)?,
             &mut grants,
             &mut removals,
         );
@@ -67,6 +67,8 @@ fn condition_matches(ctx: &ForumContext, condition: &BanCondition) -> bool {
 fn apply_ban_context(ctx: &mut ForumContext, rule: &BanRule) {
     ctx.session.set("ban_active", true);
     ctx.session.set("ban_rule", rule.id);
+    ctx.session.set("ban_cannot_post", rule.cannot_post);
+    ctx.session.set("ban_cannot_access", rule.cannot_access);
     if let Some(reason) = &rule.reason {
         ctx.session.set("ban_reason", reason);
     }
@@ -108,10 +110,17 @@ pub fn is_not_banned<S: ForumService>(
             service
                 .record_ban_hit(&[rule.id], Some(&ctx.user_info.email))
                 .ok();
-            return Err(ForumError::PermissionDenied("banned".into()));
+            if rule.cannot_access {
+                return Err(ForumError::PermissionDenied("banned".into()));
+            }
+            return Ok(());
         }
     }
     ctx.session.remove("ban_active");
+    ctx.session.remove("ban_rule");
+    ctx.session.remove("ban_reason");
+    ctx.session.remove("ban_cannot_post");
+    ctx.session.remove("ban_cannot_access");
     Ok(())
 }
 
@@ -190,7 +199,7 @@ mod tests {
         let service = InMemoryService::default();
         let mut ctx = ForumContext::default();
         ctx.user_info.groups = vec![0];
-        load_permissions(&service, &mut ctx, Some(1)).unwrap();
+        load_permissions(&service, &mut ctx, Some("1".into())).unwrap();
         assert!(ctx.user_info.permissions.contains("post_reply_any"));
     }
 

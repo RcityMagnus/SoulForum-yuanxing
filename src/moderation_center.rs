@@ -2,12 +2,12 @@ use crate::services::{ForumContext, ForumError, ForumService, ServiceResult};
 use serde_json::json;
 
 pub struct ModerationDashboard<S: ForumService> {
-    service: S,
+    _service: S,
 }
 
 impl<S: ForumService> ModerationDashboard<S> {
     pub fn new(service: S) -> Self {
-        Self { service }
+        Self { _service: service }
     }
 
     pub fn overview(&self, ctx: &mut ForumContext) -> ServiceResult<()> {

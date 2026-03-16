@@ -21,7 +21,7 @@ pub fn admin_main<S: ForumService + Clone>(
     Ok(())
 }
 
-pub fn moderation_main<S: ForumService>(service: &S, ctx: &mut ForumContext) -> ServiceResult<()> {
+pub fn moderation_main<S: ForumService>(_service: &S, ctx: &mut ForumContext) -> ServiceResult<()> {
     ensure_can_moderate(ctx)?;
     ctx.context.set(
         "moderation_menu",

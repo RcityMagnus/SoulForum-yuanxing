@@ -1,9 +1,11 @@
 use chrono::{DateTime, Duration, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
+
+pub mod surreal;
 
 pub type ServiceResult<T> = Result<T, ForumError>;
 
@@ -156,7 +158,7 @@ impl Default for UserInfo {
             ip: String::from("127.0.0.1"),
             query_wanna_see_board: String::new(),
             language: String::from("en_US"),
-            groups: vec![0],
+            groups: vec![4],
             warning: 0,
             possibly_robot: false,
         }
@@ -217,7 +219,7 @@ pub struct TopicNotificationSummary {
 
 #[derive(Clone, Debug, Default)]
 pub struct BoardAccessEntry {
-    pub id: i64,
+    pub id: String,
     pub name: String,
     pub allowed_groups: Vec<i64>,
 }
@@ -341,7 +343,7 @@ pub struct MentionRecord {
     pub time: DateTime<Utc>,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct MemberRecord {
     pub id: i64,
     pub name: String,
@@ -474,7 +476,7 @@ pub struct PermissionChange {
     pub allow: bool,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum BanAffects {
     Account { member_id: i64 },
@@ -488,7 +490,7 @@ impl Default for BanAffects {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct BanCondition {
     pub id: i64,
     pub reason: Option<String>,
@@ -496,11 +498,15 @@ pub struct BanCondition {
     pub affects: BanAffects,
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct BanRule {
     pub id: i64,
     pub reason: Option<String>,
     pub expires_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub cannot_post: bool,
+    #[serde(default)]
+    pub cannot_access: bool,
     pub conditions: Vec<BanCondition>,
 }
 
@@ -825,7 +831,7 @@ pub trait ForumService {
     fn list_members(&self) -> ServiceResult<Vec<MemberRecord>>;
     fn delete_member(&self, member_id: i64) -> ServiceResult<()>;
     fn list_board_access(&self) -> ServiceResult<Vec<BoardAccessEntry>>;
-    fn set_board_access(&self, board_id: i64, groups: &[i64]) -> ServiceResult<()>;
+    fn set_board_access(&self, board_id: &str, groups: &[i64]) -> ServiceResult<()>;
     fn fetch_alert_prefs(
         &self,
         members: &[i64],
@@ -838,7 +844,7 @@ pub trait ForumService {
     fn general_permissions(&self, group_ids: &[i64]) -> ServiceResult<Vec<PermissionChange>>;
     fn board_permissions(
         &self,
-        board_id: i64,
+        board_id: &str,
         group_ids: &[i64],
     ) -> ServiceResult<Vec<PermissionChange>>;
     fn spider_group_id(&self) -> Option<i64>;
@@ -972,13 +978,17 @@ pub fn push_to_array<T: Serialize>(bag: &mut DataBag, key: &str, value: T) {
 }
 
 pub fn ensure(condition: bool, error: ForumError) -> ServiceResult<()> {
-    if condition { Ok(()) } else { Err(error) }
+    if condition {
+        Ok(())
+    } else {
+        Err(error)
+    }
 }
 
 #[derive(Default)]
 struct InMemoryState {
     boards: HashMap<i64, BoardSummary>,
-    board_access: HashMap<i64, Vec<i64>>,
+    board_access: HashMap<String, Vec<i64>>,
     board_profiles: HashMap<i64, i64>,
     topics: HashMap<i64, TopicPostingContext>,
     messages: HashMap<i64, MessageEditData>,
@@ -1082,8 +1092,8 @@ impl InMemoryService {
                 name: "Staff".into(),
             },
         );
-        state.board_access.insert(2, vec![1]);
-        state.board_access.insert(1, vec![0, 1]);
+        state.board_access.insert("2".into(), vec![1]);
+        state.board_access.insert("1".into(), vec![0, 1]);
         state.board_profiles.insert(1, 1);
         state.board_profiles.insert(2, 2);
         state.topics.insert(
@@ -1359,6 +1369,8 @@ impl InMemoryService {
                 id: 1,
                 reason: Some("Spammer".into()),
                 expires_at: None,
+                cannot_post: true,
+                cannot_access: false,
                 conditions: vec![BanCondition {
                     id: 10,
                     reason: Some("Banned email".into()),
@@ -1613,6 +1625,9 @@ impl ForumService for InMemoryService {
         _ctx: &ForumContext,
         submission: PostSubmission,
     ) -> ServiceResult<PostedMessage> {
+        if submission.subject.trim().is_empty() || submission.body.trim().is_empty() {
+            return Err(ForumError::Validation("no_subject_or_body".into()));
+        }
         let mut state = self.state.lock().unwrap();
         let _notifications = submission.send_notifications;
         let topic_id = if let Some(id) = submission.topic_id {
@@ -2439,20 +2454,22 @@ impl ForumService for InMemoryService {
             .boards
             .iter()
             .map(|(id, board)| BoardAccessEntry {
-                id: *id,
+                id: id.to_string(),
                 name: board.name.clone(),
                 allowed_groups: state
                     .board_access
-                    .get(id)
+                    .get(&id.to_string())
                     .cloned()
                     .unwrap_or_else(|| vec![0]),
             })
             .collect())
     }
 
-    fn set_board_access(&self, board_id: i64, groups: &[i64]) -> ServiceResult<()> {
+    fn set_board_access(&self, board_id: &str, groups: &[i64]) -> ServiceResult<()> {
         let mut state = self.state.lock().unwrap();
-        state.board_access.insert(board_id, groups.to_vec());
+        state
+            .board_access
+            .insert(board_id.to_string(), groups.to_vec());
         Ok(())
     }
 
@@ -2522,11 +2539,12 @@ impl ForumService for InMemoryService {
 
     fn board_permissions(
         &self,
-        board_id: i64,
+        board_id: &str,
         group_ids: &[i64],
     ) -> ServiceResult<Vec<PermissionChange>> {
         let state = self.state.lock().unwrap();
-        let profile = match state.board_profiles.get(&board_id) {
+        let board_numeric = board_id.parse::<i64>().ok();
+        let profile = match board_numeric.and_then(|id| state.board_profiles.get(&id)) {
             Some(profile) => *profile,
             None => return Ok(Vec::new()),
         };

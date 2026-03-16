@@ -1,6 +1,6 @@
-use crate::drafts::{PmDraftOptions, PmDraftSummary, list_pm_drafts, load_pm_draft, save_pm_draft};
+use crate::drafts::{list_pm_drafts, load_pm_draft, save_pm_draft, PmDraftOptions, PmDraftSummary};
 use crate::editor::{
-    RichEditOptions, VerificationOptions, create_control_richedit, create_control_verification,
+    create_control_richedit, create_control_verification, RichEditOptions, VerificationOptions,
 };
 use crate::pm_context::load_pm_state;
 use crate::pm_ops::{self, RecipientInput};
@@ -384,7 +384,7 @@ impl<S: ForumService> PersonalMessageController<S> {
             recipients,
             subject,
             body,
-            store_outbox: ctx.post_vars.bool("outbox"),
+            _store_outbox: ctx.post_vars.bool("outbox"),
         }
     }
 
@@ -538,7 +538,7 @@ struct PmFormState {
     recipients: RecipientInput,
     subject: String,
     body: String,
-    store_outbox: bool,
+    _store_outbox: bool,
 }
 
 impl ToString for PersonalMessageFolder {

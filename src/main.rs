@@ -1,60 +1,15 @@
-mod admin;
-mod attachments;
-mod calendar;
-mod controller;
-mod db_packages;
-mod display;
-mod drafts;
-mod editor;
-mod errors;
-mod language;
-mod load;
-mod logging;
-mod manage_attachments;
-mod manage_bans;
-mod manage_maintenance;
-mod manage_membergroups;
-mod manage_members;
-mod manage_news;
-mod manage_permissions;
-mod manage_posts;
-mod manage_server;
-mod manage_settings;
-mod memberlist;
-mod mentions;
-mod message_index;
-mod moderation_center;
-mod news;
-mod notify;
-mod personal_messages;
-mod pm_context;
-mod pm_ops;
-mod poll;
-mod post_ops;
-mod profile_actions;
-mod profile_export;
-mod profile_modify;
-mod profile_notifications;
-mod profile_view;
-mod register;
-mod repair_boards;
-mod security;
-mod services;
-mod subs_auth;
-mod subs_boards;
-mod subs_membergroups;
-mod subs_members;
-mod subs_notify;
-mod tasks;
-mod templates;
-mod who;
-
-use controller::post::PostController;
-use personal_messages::{PersonalMessageController, ssi_welcome};
-use services::{ForumContext, InMemoryService};
+use btc_forum_rust::controller::post::PostController;
+use btc_forum_rust::personal_messages::{ssi_welcome, PersonalMessageController};
+use btc_forum_rust::services::{surreal::SurrealService, ForumContext};
+use btc_forum_rust::surreal::connect_from_env;
 
 fn main() {
-    let service = InMemoryService::default();
+    let rt = tokio::runtime::Runtime::new().expect("failed to create runtime");
+    let surreal_client = rt
+        .block_on(connect_from_env())
+        .expect("failed to connect to SurrealDB");
+    let service = SurrealService::new(surreal_client);
+
     let post_controller = PostController::new(service.clone());
     let pm_controller = PersonalMessageController::new(service.clone());
 

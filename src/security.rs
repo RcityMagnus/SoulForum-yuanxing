@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn load_permissions_populates_set() {
-        let service = InMemoryService::default();
+        let service = InMemoryService::new_with_sample();
         let mut ctx = ForumContext::default();
         ctx.user_info.groups = vec![0];
         load_permissions(&service, &mut ctx, Some("1".into())).unwrap();
@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn ban_removes_permissions() {
-        let service = InMemoryService::default();
+        let service = InMemoryService::new_with_sample();
         let mut ctx = ForumContext::default();
         ctx.user_info.groups = vec![0];
         load_permissions(&service, &mut ctx, None).unwrap();

@@ -410,11 +410,9 @@ mod tests {
         ctx.user_info.is_guest = false;
         ctx.user_info.email = "alice@example.com".into();
         controller.board_notify(&mut ctx).unwrap();
-        assert!(
-            service
-                .is_board_notification_set(1, 1)
-                .expect("board notify state")
-        );
+        assert!(service
+            .is_board_notification_set(1, 1)
+            .expect("board notify state"));
     }
 
     #[test]

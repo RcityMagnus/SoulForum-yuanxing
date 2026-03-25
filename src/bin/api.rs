@@ -19,10 +19,10 @@ use btc_forum_rust::{
 };
 use tower_http::cors::CorsLayer;
 
-#[path = "../api/mod.rs"]
-mod api;
 #[path = "../agent/mod.rs"]
 mod agent;
+#[path = "../api/mod.rs"]
+mod api;
 
 use agent::router::router as agent_router;
 
@@ -30,8 +30,8 @@ use api::admin_routes::{
     admin_notify, apply_ban, assign_moderator, assign_moderator_by_record, get_board_access,
     get_board_permissions, grant_docs_space_create_by_record, list_action_logs, list_admins,
     list_bans, list_groups, list_users, revoke_ban, revoke_docs_space_create_by_record,
-    revoke_moderator,
-    revoke_moderator_by_record, transfer_admin, update_board_access, update_board_permissions,
+    revoke_moderator, revoke_moderator_by_record, transfer_admin, update_board_access,
+    update_board_permissions,
 };
 use api::attachment_routes::{
     create_attachment_meta, delete_attachment_api, list_attachments, serve_upload,
@@ -325,10 +325,22 @@ async fn main() {
         .route("/admin/bans/apply", post(apply_ban))
         .route("/admin/bans/revoke", post(revoke_ban))
         .route("/admin/notify", post(admin_notify))
-        .route("/admin/moderators/:member_id/assign", post(assign_moderator))
-        .route("/admin/moderators/:member_id/revoke", post(revoke_moderator))
-        .route("/admin/moderators/assign_by_record", post(assign_moderator_by_record))
-        .route("/admin/moderators/revoke_by_record", post(revoke_moderator_by_record))
+        .route(
+            "/admin/moderators/:member_id/assign",
+            post(assign_moderator),
+        )
+        .route(
+            "/admin/moderators/:member_id/revoke",
+            post(revoke_moderator),
+        )
+        .route(
+            "/admin/moderators/assign_by_record",
+            post(assign_moderator_by_record),
+        )
+        .route(
+            "/admin/moderators/revoke_by_record",
+            post(revoke_moderator_by_record),
+        )
         .route(
             "/admin/docs/grant_space_create_by_record",
             post(grant_docs_space_create_by_record),

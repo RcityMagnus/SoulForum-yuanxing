@@ -59,12 +59,11 @@ mod tests {
         ctx.user_info.language = "chinese_simplified".into();
         apply_language(&mut ctx, "index");
         assert_eq!(ctx.txt.string("mentions").as_deref(), Some("提及内容"));
-        assert!(
-            ctx.txt
-                .string("notify_topic_0_desc")
-                .unwrap()
-                .contains("@mentions")
-        );
+        assert!(ctx
+            .txt
+            .string("notify_topic_0_desc")
+            .unwrap()
+            .contains("@mentions"));
     }
 
     #[test]

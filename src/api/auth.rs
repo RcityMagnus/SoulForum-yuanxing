@@ -1,7 +1,11 @@
 use axum::{http::StatusCode, Json};
 
 use btc_forum_rust::{
-    auth::AuthClaims, rainbow_auth::RainbowUser, security::is_not_banned, services::{ForumContext, ForumError}, surreal::SurrealUser,
+    auth::AuthClaims,
+    rainbow_auth::RainbowUser,
+    security::is_not_banned,
+    services::{ForumContext, ForumError},
+    surreal::SurrealUser,
 };
 
 use super::{error::api_error_from_status, state::AppState};
@@ -75,16 +79,19 @@ pub(crate) async fn ensure_user_ctx(
             if let Some(user_info) = resolved_user {
                 let mut user = user;
                 user.name = user_info.email;
-                let ctx = match enrich_ctx_with_ban_state(state, build_ctx_from_user(&user, claims)).await {
+                let ctx = match enrich_ctx_with_ban_state(state, build_ctx_from_user(&user, claims))
+                    .await
+                {
                     Ok(ctx) => ctx,
                     Err(resp) => return Err(resp),
                 };
                 return Ok((user, ctx));
             }
-            let ctx = match enrich_ctx_with_ban_state(state, build_ctx_from_user(&user, claims)).await {
-                Ok(ctx) => ctx,
-                Err(resp) => return Err(resp),
-            };
+            let ctx =
+                match enrich_ctx_with_ban_state(state, build_ctx_from_user(&user, claims)).await {
+                    Ok(ctx) => ctx,
+                    Err(resp) => return Err(resp),
+                };
             Ok((user, ctx))
         }
         Err(err) => {

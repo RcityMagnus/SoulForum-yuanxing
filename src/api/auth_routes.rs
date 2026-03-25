@@ -9,20 +9,20 @@ use std::hash::{Hash, Hasher};
 use std::{net::SocketAddr, time::Duration};
 use tracing::error;
 
-use btc_forum_shared::{
-    AuthMeResponse, AuthResponse, AuthUser, ErrorCode, LoginRequest, RegisterRequest,
-    RegisterResponse,
-};
 use btc_forum_rust::{
     auth::AuthClaims,
     security::is_not_banned,
     services::{ForumContext, ForumError},
     surreal::reauth_from_env,
 };
+use btc_forum_shared::{
+    AuthMeResponse, AuthResponse, AuthUser, ErrorCode, LoginRequest, RegisterRequest,
+    RegisterResponse,
+};
 
 use super::{
-    auth::build_ctx_from_user,
     auth::bearer_from_headers,
+    auth::build_ctx_from_user,
     error::{api_error, api_error_from_status, rainbow_auth_error_response},
     guards::enforce_rate,
     state::AppState,
@@ -102,7 +102,11 @@ pub(crate) async fn login(
                 let mut hasher = DefaultHasher::new();
                 login.user.email.hash(&mut hasher);
                 let hashed = (hasher.finish() & 0x7FFF_FFFF_FFFF_FFFF) as i64;
-                if hashed == 0 { 1 } else { hashed }
+                if hashed == 0 {
+                    1
+                } else {
+                    hashed
+                }
             };
 
             let member_id = match state
@@ -119,7 +123,11 @@ pub(crate) async fn login(
                             error!(error = %reauth_err, "surreal reauth failed in login route, fallback member_id will be used");
                             fallback_member_id
                         } else {
-                            match state.surreal.ensure_user(&login.user.email, None, None).await {
+                            match state
+                                .surreal
+                                .ensure_user(&login.user.email, None, None)
+                                .await
+                            {
                                 Ok(user) => user.legacy_id(),
                                 Err(retry_err) => {
                                     error!(error = %retry_err, "failed to ensure user after login retry, fallback member_id will be used");
@@ -167,7 +175,11 @@ pub(crate) async fn auth_me(
 
     match state.rainbow_auth.me(&token).await {
         Ok(user) => {
-            let (member_id, permissions) = match state.surreal.ensure_user(&user.email, None, None).await {
+            let (member_id, permissions) = match state
+                .surreal
+                .ensure_user(&user.email, None, None)
+                .await
+            {
                 Ok(forum_user) => {
                     let claims = AuthClaims {
                         sub: user.email.clone(),

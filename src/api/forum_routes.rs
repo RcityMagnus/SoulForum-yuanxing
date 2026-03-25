@@ -11,7 +11,9 @@ use tracing::error;
 use btc_forum_rust::{
     auth::AuthClaims,
     services::{BoardAccessEntry, ForumContext},
-    surreal::{connect_from_env, create_board as create_board_with_client, SurrealPost, SurrealTopic},
+    surreal::{
+        connect_from_env, create_board as create_board_with_client, SurrealPost, SurrealTopic,
+    },
 };
 use btc_forum_shared::{
     Board, BoardsResponse, CreateBoardPayload, CreateBoardResponse, CreatePostPayload,

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::drafts::{list_pm_drafts, load_pm_draft, save_pm_draft, PmDraftOptions, PmDraftSummary};
 use crate::editor::{
     create_control_richedit, create_control_verification, RichEditOptions, VerificationOptions,
@@ -507,7 +509,7 @@ fn folder_from_request(ctx: &ForumContext) -> PersonalMessageFolder {
 fn parse_name_list(value: Option<String>) -> Vec<String> {
     value
         .unwrap_or_default()
-        .split(|c: char| c == ',' || c == ';')
+        .split([',', ';'])
         .map(|part| part.trim().to_string())
         .filter(|part| !part.is_empty())
         .collect()
@@ -541,11 +543,11 @@ struct PmFormState {
     _store_outbox: bool,
 }
 
-impl ToString for PersonalMessageFolder {
-    fn to_string(&self) -> String {
-        match self {
-            PersonalMessageFolder::Inbox => "inbox".into(),
-            PersonalMessageFolder::Sent => "sent".into(),
-        }
+impl fmt::Display for PersonalMessageFolder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            PersonalMessageFolder::Inbox => "inbox",
+            PersonalMessageFolder::Sent => "sent",
+        })
     }
 }

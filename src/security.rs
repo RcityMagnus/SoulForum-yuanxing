@@ -215,11 +215,14 @@ mod tests {
     }
 
     #[test]
-    fn banned_user_is_blocked() {
+    fn banned_user_is_marked_but_not_access_blocked() {
         let service = InMemoryService::default();
         let mut ctx = ForumContext::default();
         ctx.user_info.email = "banned@example.com".into();
         let result = is_not_banned(&service, &mut ctx, true);
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert!(ctx.session.bool("ban_active"));
+        assert!(ctx.session.bool("ban_cannot_post"));
+        assert!(!ctx.session.bool("ban_cannot_access"));
     }
 }

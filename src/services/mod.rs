@@ -762,7 +762,7 @@ pub trait ForumService {
     fn add_topic_notification(&self, member_id: i64, topic_id: i64) -> ServiceResult<()>;
     fn remove_topic_notification(&self, member_id: i64, topic_id: i64) -> ServiceResult<()>;
     fn load_topic_log(&self, member_id: i64, topic_id: i64)
-    -> ServiceResult<Option<TopicLogEntry>>;
+        -> ServiceResult<Option<TopicLogEntry>>;
     fn save_topic_log(&self, entry: TopicLogEntry) -> ServiceResult<()>;
     fn list_board_notifications(
         &self,
@@ -1447,7 +1447,7 @@ impl InMemoryService {
                     name: rec.name.clone(),
                 })
                 .collect(),
-            labels: recipient.map(|rec| rec.labels).unwrap_or_else(Vec::new),
+            labels: recipient.map(|rec| rec.labels).unwrap_or_default(),
         }
     }
 
@@ -1474,7 +1474,7 @@ impl InMemoryService {
             labels: recipient
                 .as_ref()
                 .map(|rec| rec.labels.clone())
-                .unwrap_or_else(Vec::new),
+                .unwrap_or_default(),
             is_read: recipient.as_ref().map(|rec| rec.is_read).unwrap_or(true),
         }
     }
@@ -1557,7 +1557,6 @@ impl ForumService for InMemoryService {
         let mut boards: Vec<BoardSummary> = state
             .boards
             .values()
-            .cloned()
             .filter(|board| {
                 options
                     .included_boards
@@ -1565,6 +1564,7 @@ impl ForumService for InMemoryService {
                     .map(|allowed| allowed.contains(&board.id))
                     .unwrap_or(true)
             })
+            .cloned()
             .collect();
         if boards.is_empty() {
             if let Some(selected) = options.selected_board {
@@ -1739,8 +1739,8 @@ impl ForumService for InMemoryService {
         Ok(state
             .attachments
             .values()
-            .cloned()
             .filter(|att| att.message_id == Some(msg_id))
+            .cloned()
             .collect())
     }
 
@@ -3011,7 +3011,7 @@ impl ForumService for InMemoryService {
 
     fn prune_personal_messages(&self, user_id: i64, days: i64) -> ServiceResult<usize> {
         let mut state = self.state.lock().unwrap();
-        let threshold = Utc::now() - Duration::days(days.max(0) as i64);
+        let threshold = Utc::now() - Duration::days(days.max(0));
         let mut removed = 0;
         let ids: Vec<i64> = state.personal_messages.keys().copied().collect();
         for pm_id in ids {
@@ -3191,7 +3191,7 @@ impl ForumService for InMemoryService {
 
     fn insert_mentions(&self, records: &[MentionRecord]) -> ServiceResult<()> {
         let mut state = self.state.lock().unwrap();
-        for mut record in records.to_vec() {
+        for mut record in records.iter().cloned() {
             if record.id == 0 {
                 record.id = state.next_mention_id;
                 state.next_mention_id += 1;

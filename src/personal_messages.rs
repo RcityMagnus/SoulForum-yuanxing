@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::drafts::{list_pm_drafts, load_pm_draft, save_pm_draft, PmDraftOptions, PmDraftSummary};
 use crate::editor::{
     create_control_richedit, create_control_verification, RichEditOptions, VerificationOptions,

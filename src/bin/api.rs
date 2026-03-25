@@ -23,12 +23,9 @@ use tower_http::cors::CorsLayer;
 mod agent;
 #[path = "../api/mod.rs"]
 mod api;
-#[path = "../agent/mod.rs"]
-mod agent;
 
 use agent::router::router as agent_router;
 
-use agent::router::router as agent_router;
 
 use api::admin_routes::{
     admin_notify, apply_ban, assign_moderator, assign_moderator_by_record, get_board_access,

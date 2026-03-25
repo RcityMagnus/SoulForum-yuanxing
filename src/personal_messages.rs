@@ -531,7 +531,7 @@ fn parse_id_list(ctx: &ForumContext, key: &str) -> Vec<i64> {
 fn parse_list(value: Option<String>) -> Vec<i64> {
     value
         .unwrap_or_default()
-        .split(|c: char| c == ',' || c == ';' || c.is_whitespace())
+        .split([',', ';', ' '])
         .filter_map(|part| part.trim().parse::<i64>().ok())
         .collect()
 }
@@ -543,11 +543,11 @@ struct PmFormState {
     _store_outbox: bool,
 }
 
-impl fmt::Display for PersonalMessageFolder {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            PersonalMessageFolder::Inbox => "inbox",
-            PersonalMessageFolder::Sent => "sent",
-        })
+impl std::fmt::Display for PersonalMessageFolder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PersonalMessageFolder::Inbox => write!(f, "inbox"),
+            PersonalMessageFolder::Sent => write!(f, "sent"),
+        }
     }
 }

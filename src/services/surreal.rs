@@ -35,10 +35,7 @@ struct PostRow {
 
 impl PostRow {
     fn topic_id_numeric(&self) -> Option<i64> {
-        self.topic_id
-            .split(':')
-            .next_back()
-            .and_then(|s| s.parse().ok())
+        self.topic_id.split(':').next_back().and_then(|s| s.parse().ok())
     }
 }
 

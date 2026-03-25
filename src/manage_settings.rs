@@ -1,6 +1,6 @@
 use crate::services::{ForumContext, ServiceResult};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct PmSpamSettings {
     pub max_recipients: i64,
     pub verification_posts: i64,

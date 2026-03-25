@@ -122,7 +122,7 @@ pub fn create_control_verification(
         });
     }
 
-    if do_test && ctx.session.bool("captcha_fail") {
+    if do_test && ctx.session.bool("captcha_failed") {
         return Err(ForumError::Validation("captcha_failed".into()));
     }
 

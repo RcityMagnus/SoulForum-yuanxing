@@ -1557,7 +1557,7 @@ impl ForumService for InMemoryService {
         let mut boards: Vec<BoardSummary> = state
             .boards
             .values()
-            .filter(|board| {
+            .filter(|&board| {
                 options
                     .included_boards
                     .as_ref()
@@ -1739,7 +1739,7 @@ impl ForumService for InMemoryService {
         Ok(state
             .attachments
             .values()
-            .filter(|att| att.message_id == Some(msg_id))
+            .filter(|&att| att.message_id == Some(msg_id))
             .cloned()
             .collect())
     }

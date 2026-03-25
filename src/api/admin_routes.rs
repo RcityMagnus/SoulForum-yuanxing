@@ -371,7 +371,7 @@ async fn persist_user_admin_row_by_record_id(
     primary_group: Option<i64>,
     additional_groups: Vec<i64>,
 ) -> Result<(), ApiErr> {
-    let _rid = normalize_user_record_id(record_id);
+        let _rid = normalize_user_record_id(record_id);
     let rid_key = user_key_from_record_id(record_id);
 
     let full_update = || {

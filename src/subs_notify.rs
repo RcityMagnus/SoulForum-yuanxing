@@ -44,7 +44,8 @@ pub fn set_notify_prefs<S: ForumService>(
     let clamped: Vec<_> = prefs
         .iter()
         .map(|(key, value)| {
-            let val = (*value).clamp(-128, 127);
+            let mut val = *value;
+            val = val.clamp(-128, 127);
             (key.clone(), val)
         })
         .collect();

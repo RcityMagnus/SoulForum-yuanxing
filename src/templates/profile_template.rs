@@ -40,7 +40,7 @@ pub struct AlertChannelPreference {
     pub allowed: bool,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum AlertChannel {
     #[default]
     Alert,
@@ -70,7 +70,7 @@ pub fn render_alert_preferences(page: &AlertPreferencePage) -> String {
     if page.show_notify_once {
         writeln!(
             html,
-            "<label><input type=\"checkbox\" name=\"notify_once\" {}> Notify me only once per topic</label>",
+            "<label><input type=\"checkbox\" name=\"notify_once\" {}> ",
             if page.notify_once_enabled {
                 "checked"
             } else {

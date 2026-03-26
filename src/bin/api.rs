@@ -26,7 +26,6 @@ mod api;
 
 use agent::router::router as agent_router;
 
-
 use api::admin_routes::{
     admin_notify, apply_ban, assign_moderator, assign_moderator_by_record, get_board_access,
     get_board_permissions, grant_docs_space_create_by_record, list_action_logs, list_admins,

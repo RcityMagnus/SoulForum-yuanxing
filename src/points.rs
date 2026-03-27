@@ -8,6 +8,9 @@ use surrealdb::types::SurrealValue;
 use crate::services::ForumError;
 use crate::surreal::SurrealClient;
 
+pub const TOPIC_CREATE_KARMA: i64 = 3;
+pub const REPLY_CREATE_KARMA: i64 = 1;
+
 #[derive(Debug, Clone, SurrealValue)]
 struct PointsAggregateRow {
     member_id: Option<i64>,
@@ -92,6 +95,34 @@ pub fn parse_metric(raw: Option<&str>) -> PointsMetric {
     match raw.unwrap_or("karma").trim().to_ascii_lowercase().as_str() {
         "merit" => PointsMetric::Merit,
         _ => PointsMetric::Karma,
+    }
+}
+
+pub fn topic_created_payload(member_id: i64, topic_id: &str) -> CreatePointsEventPayload {
+    CreatePointsEventPayload {
+        kind: PointsEventKind::PostCreated,
+        target_member_id: member_id,
+        actor_member_id: Some(member_id),
+        karma_delta: TOPIC_CREATE_KARMA,
+        merit_delta: 0,
+        reason: Some("topic_created".into()),
+        reference_type: Some("topic".into()),
+        reference_id: Some(topic_id.to_string()),
+        idempotency_key: Some(format!("points:topic_created:{member_id}:{topic_id}")),
+    }
+}
+
+pub fn reply_created_payload(member_id: i64, post_id: &str) -> CreatePointsEventPayload {
+    CreatePointsEventPayload {
+        kind: PointsEventKind::PostCreated,
+        target_member_id: member_id,
+        actor_member_id: Some(member_id),
+        karma_delta: REPLY_CREATE_KARMA,
+        merit_delta: 0,
+        reason: Some("reply_created".into()),
+        reference_type: Some("post".into()),
+        reference_id: Some(post_id.to_string()),
+        idempotency_key: Some(format!("points:reply_created:{member_id}:{post_id}")),
     }
 }
 
@@ -405,5 +436,37 @@ mod tests {
         assert_eq!(parse_metric(Some("merit")), PointsMetric::Merit);
         assert_eq!(parse_metric(Some("wat")), PointsMetric::Karma);
         assert_eq!(parse_metric(None), PointsMetric::Karma);
+    }
+
+    #[test]
+    fn builds_topic_created_payload() {
+        let payload = topic_created_payload(42, "topics:abc");
+        assert_eq!(payload.kind, PointsEventKind::PostCreated);
+        assert_eq!(payload.target_member_id, 42);
+        assert_eq!(payload.actor_member_id, Some(42));
+        assert_eq!(payload.karma_delta, TOPIC_CREATE_KARMA);
+        assert_eq!(payload.reference_type.as_deref(), Some("topic"));
+        assert_eq!(payload.reference_id.as_deref(), Some("topics:abc"));
+        assert_eq!(payload.reason.as_deref(), Some("topic_created"));
+        assert_eq!(
+            payload.idempotency_key.as_deref(),
+            Some("points:topic_created:42:topics:abc")
+        );
+    }
+
+    #[test]
+    fn builds_reply_created_payload() {
+        let payload = reply_created_payload(7, "posts:def");
+        assert_eq!(payload.kind, PointsEventKind::PostCreated);
+        assert_eq!(payload.target_member_id, 7);
+        assert_eq!(payload.actor_member_id, Some(7));
+        assert_eq!(payload.karma_delta, REPLY_CREATE_KARMA);
+        assert_eq!(payload.reference_type.as_deref(), Some("post"));
+        assert_eq!(payload.reference_id.as_deref(), Some("posts:def"));
+        assert_eq!(payload.reason.as_deref(), Some("reply_created"));
+        assert_eq!(
+            payload.idempotency_key.as_deref(),
+            Some("points:reply_created:7:posts:def")
+        );
     }
 }

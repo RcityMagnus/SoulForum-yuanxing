@@ -6,10 +6,11 @@ use axum::{
 };
 use serde::Deserialize;
 use std::{net::SocketAddr, time::Duration};
-use tracing::error;
+use tracing::{error, warn};
 
 use btc_forum_rust::{
     auth::AuthClaims,
+    points,
     services::{BoardAccessEntry, ForumContext},
     surreal::{
         connect_from_env, create_board as create_board_with_client, SurrealPost, SurrealTopic,
@@ -280,15 +281,28 @@ pub(crate) async fn create_surreal_topic(
     .await;
 
     match topic_result {
-        Ok((topic, post)) => (
-            StatusCode::CREATED,
-            Json(TopicCreateResponse {
-                status: "ok".to_string(),
-                topic: to_topic(topic),
-                first_post: to_post(post),
-            }),
-        )
-            .into_response(),
+        Ok((topic, post)) => {
+            if let Some(topic_id) = topic.id.as_deref() {
+                let payload = points::topic_created_payload(user.legacy_id(), topic_id);
+                if let Err(err) = points::create_points_event(state.surreal.client(), payload).await {
+                    warn!(
+                        error = %err,
+                        topic_id = %topic_id,
+                        user = %user.name,
+                        "topic created but failed to write points ledger event"
+                    );
+                }
+            }
+            (
+                StatusCode::CREATED,
+                Json(TopicCreateResponse {
+                    status: "ok".to_string(),
+                    topic: to_topic(topic),
+                    first_post: to_post(post),
+                }),
+            )
+                .into_response()
+        }
         Err(err) => {
             error!(error = %err, "failed to create topic");
             api_error(
@@ -390,14 +404,28 @@ pub(crate) async fn create_surreal_topic_post(
         )
         .await
     {
-        Ok(post) => (
-            StatusCode::CREATED,
-            Json(PostResponse {
-                status: "ok".to_string(),
-                post: to_post(post),
-            }),
-        )
-            .into_response(),
+        Ok(post) => {
+            if let Some(post_id) = post.id.as_deref() {
+                let points_payload = points::reply_created_payload(user.legacy_id(), post_id);
+                if let Err(err) = points::create_points_event(state.surreal.client(), points_payload).await {
+                    warn!(
+                        error = %err,
+                        post_id = %post_id,
+                        topic_id = %payload.topic_id,
+                        user = %user.name,
+                        "reply created but failed to write points ledger event"
+                    );
+                }
+            }
+            (
+                StatusCode::CREATED,
+                Json(PostResponse {
+                    status: "ok".to_string(),
+                    post: to_post(post),
+                }),
+            )
+                .into_response()
+        }
         Err(err) => {
             error!(error = %err, "failed to create post");
             api_error(

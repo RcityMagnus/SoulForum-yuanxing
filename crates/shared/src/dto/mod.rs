@@ -6,3 +6,4 @@ pub mod demo;
 pub mod forum;
 pub mod notification;
 pub mod personal_message;
+pub mod points;

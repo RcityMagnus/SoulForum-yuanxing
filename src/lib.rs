@@ -31,6 +31,7 @@ pub mod notify;
 pub mod personal_messages;
 pub mod pm_context;
 pub mod pm_ops;
+pub mod points;
 pub mod poll;
 pub mod post_ops;
 pub mod profile_actions;

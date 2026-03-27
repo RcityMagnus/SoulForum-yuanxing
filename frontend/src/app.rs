@@ -192,6 +192,10 @@ fn replace_browser_path(path: &str) {
     }
 }
 
+fn preview_points_snapshot(seed: &str) -> crate::components::points::PointsSnapshot {
+    crate::components::points::PointsSnapshot::seeded(seed)
+}
+
 // Legacy wrappers kept during refactor; services should call ApiClient directly.
 async fn get_json<T: serde::de::DeserializeOwned>(
     base: &str,
@@ -1718,6 +1722,12 @@ pub fn app() -> Element {
     } else {
         display_name
     };
+    let current_member_label = if is_logged_in {
+        display_name.clone()
+    } else {
+        "Guest".to_string()
+    };
+    let current_points_snapshot = preview_points_snapshot(&current_member_label);
     let welcome_text = if is_logged_in {
         format!("Welcome, {}.", display_name)
     } else {
@@ -1881,6 +1891,8 @@ pub fn app() -> Element {
                     boards_len: boards.read().len(),
                     topics_len: topics.read().len(),
                     posts_len: posts.read().len(),
+                    current_member_label: current_member_label.clone(),
+                    points_snapshot: current_points_snapshot.clone(),
                     on_load_boards: move |_| load_boards(),
                     on_check_health: move |_| check_health(),
                     on_clear_token: move |_| {
@@ -1892,6 +1904,9 @@ pub fn app() -> Element {
                         let csrf = read_csrf_cookie().unwrap_or_default();
                         csrf_token.set(csrf.clone());
                         status.set("已同步 CSRF".into());
+                    },
+                    on_open_points: move |_| {
+                        status.set("Karma / Merit 前端展示位已接入；当前为 preview，待后端积分接口后切真实数据。".into());
                     },
                 }
 
@@ -1954,6 +1969,12 @@ pub fn app() -> Element {
                                     Err(err) => status.set(format!("评论失败：{err}")),
                                 }
                             });
+                        },
+                        on_open_points_help: move |author: String| {
+                            status.set(format!("{author} 的 Karma / Merit 目前为前端 preview，待后端积分接口接入后展示真实值。"));
+                        },
+                        on_reward_author: move |author: String| {
+                            status.set(format!("已触发给 {author} 的 +1 Merit 入口（当前仅前端占位，未写入后端）。"));
                         },
                     }
                 }} else { rsx! {

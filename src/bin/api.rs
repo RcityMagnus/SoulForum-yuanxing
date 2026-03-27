@@ -49,6 +49,7 @@ use api::personal_message_routes::{
     delete_personal_messages_api, list_personal_messages, mark_personal_messages_read,
     send_personal_message_api,
 };
+use api::points_routes::{create_points_event_api, my_points, points_leaderboard, user_points};
 use api::state::{
     csrf_enabled, find_csrf_cookie, generate_csrf_token, rainbow_auth_base_url, AppState,
     RateLimiter,
@@ -306,6 +307,10 @@ async fn main() {
             "/surreal/personal_messages/delete",
             post(delete_personal_messages_api),
         )
+        .route("/surreal/points/me", get(my_points))
+        .route("/surreal/points/users/:member_id", get(user_points))
+        .route("/surreal/points/leaderboard", get(points_leaderboard))
+        .route("/surreal/points/events", post(create_points_event_api))
         .route(
             "/surreal/boards",
             get(surreal_boards).post(create_surreal_board),

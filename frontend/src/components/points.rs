@@ -1,3 +1,4 @@
+use btc_forum_shared::PointsBalance;
 use dioxus::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -40,6 +41,27 @@ impl PointsSnapshot {
             ),
             backend_ready: false,
         }
+    }
+
+    pub fn from_balance(balance: &PointsBalance) -> Self {
+        Self {
+            karma: i32::try_from(balance.karma).ok(),
+            merit: i32::try_from(balance.merit).ok(),
+            trust_level: Some(rank_label(balance.karma, balance.merit).to_string()),
+            backend_ready: true,
+        }
+    }
+}
+
+fn rank_label(karma: i64, merit: i64) -> &'static str {
+    if karma >= 300 && merit >= 3 {
+        "OG"
+    } else if karma >= 100 && merit >= 1 {
+        "Regular"
+    } else if karma >= 20 {
+        "Builder"
+    } else {
+        "Newcomer"
     }
 }
 

@@ -13,6 +13,7 @@ pub struct HomePageProps {
 
     pub current_member_label: String,
     pub points_snapshot: crate::components::points::PointsSnapshot,
+    pub points_hint: String,
 
     pub on_load_boards: EventHandler<()>,
     pub on_check_health: EventHandler<()>,
@@ -43,7 +44,7 @@ pub fn HomePage(mut props: HomePageProps) -> Element {
                 crate::components::points::PointsEntry {
                     title: format!("{} 的积分", props.current_member_label),
                     snapshot: props.points_snapshot.clone(),
-                    hint: "当前为前端预留展示位；后端积分接口落地后可直接切换真实值。".to_string(),
+                    hint: props.points_hint.clone(),
                     action_label: "查看 Karma / Merit 说明".to_string(),
                     compact: Some(true),
                     on_action: move |_| props.on_open_points.call(()),

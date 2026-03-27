@@ -10,6 +10,7 @@ use btc_forum_shared::{
     DocsPermissionGrantResponse, DocsPermissionRevokeByRecordPayload, DocsPermissionRevokeResponse,
     HealthResponse, LoginRequest, MarkNotificationPayload, MarkNotificationResponse,
     ModeratorUpdateByRecordPayload, ModeratorUpdateResponse, Notification,
+    PointsBalanceResponse,
     NotificationCreateResponse, NotificationListResponse, PersonalMessage,
     PersonalMessageIdsPayload, PersonalMessageIdsResponse, PersonalMessageListResponse,
     PersonalMessageSendPayload, PersonalMessageSendResponse, Post, PostResponse, PostsResponse,
@@ -196,6 +197,18 @@ fn preview_points_snapshot(seed: &str) -> crate::components::points::PointsSnaps
     crate::components::points::PointsSnapshot::seeded(seed)
 }
 
+fn points_help_text(snapshot: &crate::components::points::PointsSnapshot) -> String {
+    if snapshot.backend_ready {
+        format!(
+            "当前展示真实积分：Karma {} / Merit {}。",
+            snapshot.karma.unwrap_or_default(),
+            snapshot.merit.unwrap_or_default()
+        )
+    } else {
+        "当前展示的是 preview 占位；登录后会自动读取真实 Karma / Merit。".to_string()
+    }
+}
+
 // Legacy wrappers kept during refactor; services should call ApiClient directly.
 async fn get_json<T: serde::de::DeserializeOwned>(
     base: &str,
@@ -293,6 +306,7 @@ pub fn app() -> Element {
     let mut transfer_demote_self = use_signal(|| true);
     let mut pm_auto_poll_started = use_signal(|| false);
     let mut forum_auto_poll_started = use_signal(|| false);
+    let mut current_points_snapshot = use_signal(|| crate::components::points::PointsSnapshot::pending());
 
     // actions (login/register etc.)
     let login = move || {
@@ -1727,7 +1741,6 @@ pub fn app() -> Element {
     } else {
         "Guest".to_string()
     };
-    let current_points_snapshot = preview_points_snapshot(&current_member_label);
     let welcome_text = if is_logged_in {
         format!("Welcome, {}.", display_name)
     } else {
@@ -1786,6 +1799,8 @@ pub fn app() -> Element {
         }
     });
 
+    let points_member_label = current_member_label.clone();
+
     let mut logout = move || {
         clear_auth_storage();
         token.set("".into());
@@ -1799,6 +1814,34 @@ pub fn app() -> Element {
         is_login_page.set(false);
         status.set("已登出".into());
     };
+
+    use_effect(move || {
+        let current_member_label = points_member_label.clone();
+        let jwt = token.read().clone();
+        let csrf = csrf_token.read().clone();
+        let base = api_base.read().clone();
+        if jwt.trim().is_empty() {
+            current_points_snapshot.set(preview_points_snapshot(&current_member_label));
+            return;
+        }
+
+        current_points_snapshot.set(crate::components::points::PointsSnapshot::pending());
+        let mut current_points_snapshot = current_points_snapshot.clone();
+        let mut status = status.clone();
+        spawn(async move {
+            let client = build_client(&base, &jwt, &csrf);
+            match crate::services::points::load_my_points(&client).await {
+                Ok(PointsBalanceResponse { balance, .. }) => {
+                    current_points_snapshot
+                        .set(crate::components::points::PointsSnapshot::from_balance(&balance));
+                }
+                Err(err) => {
+                    current_points_snapshot.set(preview_points_snapshot(&current_member_label));
+                    status.set(format!("加载积分失败，已回退 preview：{err}"));
+                }
+            }
+        });
+    });
 
     use_effect(move || {
         let is_admin_now = *is_admin_page.read();
@@ -1892,7 +1935,12 @@ pub fn app() -> Element {
                     topics_len: topics.read().len(),
                     posts_len: posts.read().len(),
                     current_member_label: current_member_label.clone(),
-                    points_snapshot: current_points_snapshot.clone(),
+                    points_snapshot: current_points_snapshot.read().clone(),
+                    points_hint: if current_points_snapshot.read().backend_ready {
+                        "实时读取当前用户真实 Karma / Merit。".to_string()
+                    } else {
+                        "当前为 preview 占位；登录后会自动读取真实 Karma / Merit。".to_string()
+                    },
                     on_load_boards: move |_| load_boards(),
                     on_check_health: move |_| check_health(),
                     on_clear_token: move |_| {
@@ -1906,7 +1954,7 @@ pub fn app() -> Element {
                         status.set("已同步 CSRF".into());
                     },
                     on_open_points: move |_| {
-                        status.set("Karma / Merit 前端展示位已接入；当前为 preview，待后端积分接口后切真实数据。".into());
+                        status.set(points_help_text(&current_points_snapshot.read()));
                     },
                 }
 

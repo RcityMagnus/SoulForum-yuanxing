@@ -61,11 +61,14 @@ pub async fn list(
         }
     };
 
-    if let Err((status, Json(error))) = ensure_user_ctx(&state, claims).await.map(|_| ()) {
-        return err_response::<NotificationListData>(status, &request_extensions, error);
-    }
+    let (user, _ctx) = match ensure_user_ctx(&state, claims).await {
+        Ok(value) => value,
+        Err((status, Json(error))) => {
+            return err_response::<NotificationListData>(status, &request_extensions, error)
+        }
+    };
 
-    match state.surreal.list_notifications(&claims.sub).await {
+    match state.surreal.list_notifications(&user.name).await {
         Ok(items) => ok_response(
             StatusCode::OK,
             &request_extensions,

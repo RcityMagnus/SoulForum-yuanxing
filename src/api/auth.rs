@@ -8,6 +8,21 @@ use btc_forum_rust::{
     surreal::SurrealUser,
 };
 
+fn sanitize_agent_identifier(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| match ch {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => ch,
+            _ => '_',
+        })
+        .collect()
+}
+
+fn agent_actor_name(claims: &AuthClaims) -> String {
+    let principal = claims.client_id.as_deref().unwrap_or(&claims.sub);
+    format!("agent:{}", sanitize_agent_identifier(principal))
+}
+
 use super::{error::api_error_from_status, state::AppState};
 
 pub(crate) fn require_auth(
@@ -65,27 +80,33 @@ pub(crate) async fn ensure_user_ctx(
     state: &AppState,
     claims: &AuthClaims,
 ) -> Result<(SurrealUser, ForumContext), (StatusCode, Json<btc_forum_shared::ApiError>)> {
-    let resolved_user = resolve_rainbow_user(state, claims).await;
-    let name = resolved_user
-        .as_ref()
-        .map(|user| user.email.as_str())
-        .unwrap_or(&claims.sub);
+    let resolved_user = if claims.is_agent() {
+        None
+    } else {
+        resolve_rainbow_user(state, claims).await
+    };
+    let name = if claims.is_agent() {
+        agent_actor_name(claims)
+    } else {
+        resolved_user
+            .as_ref()
+            .map(|user| user.email.clone())
+            .unwrap_or_else(|| claims.sub.clone())
+    };
     match state
         .surreal
-        .ensure_user(name, claims.role.as_deref(), claims.permissions.as_deref())
+        .ensure_user(
+            &name,
+            claims.role.as_deref(),
+            claims.permissions.as_deref().or(claims.scope.as_deref()),
+        )
         .await
     {
-        Ok(user) => {
+        Ok(mut user) => {
             if let Some(user_info) = resolved_user {
-                let mut user = user;
                 user.name = user_info.email;
-                let ctx = match enrich_ctx_with_ban_state(state, build_ctx_from_user(&user, claims))
-                    .await
-                {
-                    Ok(ctx) => ctx,
-                    Err(resp) => return Err(resp),
-                };
-                return Ok((user, ctx));
+            } else if claims.is_agent() {
+                user.name = name;
             }
             let ctx =
                 match enrich_ctx_with_ban_state(state, build_ctx_from_user(&user, claims)).await {
@@ -95,7 +116,7 @@ pub(crate) async fn ensure_user_ctx(
             Ok((user, ctx))
         }
         Err(err) => {
-            tracing::error!(error = %err, "failed to ensure user");
+            tracing::error!(error = %err, subject_type = ?claims.subject_type, subject = %claims.sub, client_id = ?claims.client_id, "failed to ensure user");
             Err(api_error_from_status(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "failed to ensure user",
@@ -146,12 +167,11 @@ pub(crate) fn build_ctx_from_user(user: &SurrealUser, claims: &AuthClaims) -> Fo
         }
     }
 
-    if let Some(perms) = user
-        .permissions
-        .clone()
-        .or_else(|| claims.permissions.clone())
-    {
+    if let Some(perms) = user.permissions.clone() {
         ctx.user_info.permissions.extend(perms);
+    }
+    for permission in claims.effective_permissions() {
+        ctx.user_info.permissions.insert(permission.to_string());
     }
 
     // Treat forum-level manage permission as admin-equivalent for admin APIs.

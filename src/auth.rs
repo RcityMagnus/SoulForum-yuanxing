@@ -10,7 +10,49 @@ use axum::{
 use axum_extra::headers::{authorization::Bearer, Authorization};
 use axum_extra::TypedHeader;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+fn deserialize_scope<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum ScopeValue {
+        String(String),
+        Array(Vec<String>),
+    }
+
+    let value = Option::<ScopeValue>::deserialize(deserializer)?;
+    Ok(match value {
+        Some(ScopeValue::String(scopes)) => {
+            let scopes = scopes
+                .split_whitespace()
+                .map(str::trim)
+                .filter(|scope| !scope.is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>();
+            if scopes.is_empty() {
+                None
+            } else {
+                Some(scopes)
+            }
+        }
+        Some(ScopeValue::Array(scopes)) => {
+            let scopes = scopes
+                .into_iter()
+                .map(|scope| scope.trim().to_string())
+                .filter(|scope| !scope.is_empty())
+                .collect::<Vec<_>>();
+            if scopes.is_empty() {
+                None
+            } else {
+                Some(scopes)
+            }
+        }
+        None => None,
+    })
+}
 
 /// JWT Claims expected from Rainbow-Auth tokens.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -20,9 +62,67 @@ pub struct AuthClaims {
     pub iat: i64,
     pub role: Option<String>,
     pub permissions: Option<Vec<String>>,
+    #[serde(default, deserialize_with = "deserialize_scope")]
+    pub scope: Option<Vec<String>>,
     pub session_id: Option<String>,
+    pub subject_type: Option<String>,
+    pub client_id: Option<String>,
     #[serde(default, skip)]
     pub token: Option<String>,
+}
+
+impl AuthClaims {
+    pub fn is_agent(&self) -> bool {
+        matches!(self.subject_type.as_deref(), Some("agent"))
+    }
+
+    pub fn effective_permissions(&self) -> Vec<&str> {
+        let mut values = Vec::new();
+        if let Some(permissions) = self.permissions.as_ref() {
+            values.extend(permissions.iter().map(String::as_str));
+        }
+        if let Some(scopes) = self.scope.as_ref() {
+            values.extend(scopes.iter().map(String::as_str));
+        }
+        values
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AuthClaims;
+
+    #[test]
+    fn scope_string_deserializes_into_list() {
+        let claims: AuthClaims = serde_json::from_value(serde_json::json!({
+            "sub": "subject:123",
+            "exp": 1,
+            "iat": 1,
+            "scope": "forum:topic:read forum:reply:write"
+        }))
+        .unwrap();
+
+        assert_eq!(
+            claims.scope,
+            Some(vec!["forum:topic:read".into(), "forum:reply:write".into()])
+        );
+    }
+
+    #[test]
+    fn effective_permissions_merges_permissions_and_scope() {
+        let claims: AuthClaims = serde_json::from_value(serde_json::json!({
+            "sub": "subject:123",
+            "exp": 1,
+            "iat": 1,
+            "permissions": ["manage_boards"],
+            "scope": "forum:topic:read"
+        }))
+        .unwrap();
+
+        let effective = claims.effective_permissions();
+        assert!(effective.contains(&"manage_boards"));
+        assert!(effective.contains(&"forum:topic:read"));
+    }
 }
 
 /// Rejection type returned when auth fails.

@@ -1,4 +1,4 @@
-# BTC Forum (Rust)
+# Soul Forum (Rust)
 test
  Rust 2021 版的论坛业务原型，当前默认使用 SurrealDB 作为持久层（内存实现仍保留用于测试），用于演示发帖、私信、权限等核心流程。入口在 `src/main.rs`，通过构造 `ForumContext` 并调用控制器方法输出示例结果。
 

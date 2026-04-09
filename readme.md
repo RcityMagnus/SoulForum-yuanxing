@@ -16,7 +16,7 @@ test
   - `/surreal/topics`（GET `?board_id=...` / POST `{board_id, subject, body}`）创建/列出主题；
   - `/surreal/topic/posts`（GET `?topic_id=...` / POST `{topic_id, board_id, body, subject?}`）在主题下发帖或查看帖子；
   - `/surreal/post` + `/surreal/posts` 简单写入/列表。
-  - 认证（Rainbow-Auth）：`/auth/register`（POST `{email, password}`）会转发至 Rainbow-Auth 并返回注册提示信息（需邮箱验证）；`/auth/login`（POST `{email, password}`）返回 Rainbow-Auth 签发的 JWT。务必保证本服务的 `JWT_SECRET` 与 Rainbow-Auth 一致。
+  - 认证（Rainbow-Auth）：`/auth/register`（POST `{email, password, username?}`）会转发至 Rainbow-Auth 并返回注册提示信息（需邮箱验证）；若未提供 `username`，后端会按邮箱生成默认用户名。`/auth/login`（POST `{email, password}`）返回 Rainbow-Auth 签发的 JWT。务必保证本服务的 `JWT_SECRET` 与真实签发 JWT 的 Rainbow-Auth 实例一致。
 - 数据库迁移：Surreal 版脚本在 `migrations/surreal/0001_init.surql`（默认命名空间 `auth`、数据库 `main`），可用 `surreal sql --conn $SURREAL_ENDPOINT --user $SURREAL_USER --pass $SURREAL_PASS --ns ${SURREAL_NAMESPACE:-auth} --db ${SURREAL_DATABASE:-main} -f migrations/surreal/0001_init.surql` 应用。旧的 `migrations/0001_init.sql` 是 Postgres 示例，可忽略。
 - 格式化：`cargo fmt`
 - 静态检查：`cargo clippy -- -D warnings`

@@ -22,6 +22,50 @@ cargo run --bin api
 - CSRF：`ENFORCE_CSRF=0` 可在开发期关闭
 - 上传：`UPLOAD_DIR`、`UPLOAD_BASE_URL`、`MAX_UPLOAD_MB`、`ALLOWED_MIME`
 
+## JWT 对齐规则
+- `SoulForum` 和实际签发登录 JWT 的那一个 `Rainbow-Auth` 必须使用同一个 `JWT_SECRET`。
+- 不要只看目录名或历史 `.env` 判断签发方；要以实际监听 `RAINBOW_AUTH_BASE_URL` 的那个进程为准。
+- `Rainbow-Auth` 如果同时存在多套目录、容器或调试实例，`/auth/me` 可能仍然成功，但 `/surreal/*` 会因为 `SoulForum` 本地 JWT 解码失败而返回 `401`。
+
+典型现象：
+- `/auth/me` 返回 `200`
+- `/surreal/points/me` 或 `/surreal/personal_messages` 返回 `401`
+
+这通常说明：
+- Bearer token 能被 `Rainbow-Auth` 接受
+- 但 `SoulForum` 本地无法用当前 `JWT_SECRET` 解开这枚 token
+
+部署时请固定检查：
+```bash
+# 1. 检查 SoulForum 配置
+grep -E '^(JWT_SECRET|RAINBOW_AUTH_BASE_URL)=' .env
+
+# 2. 检查实际运行的 Rainbow-Auth 进程
+ss -ltnp | grep 8080
+ps -ef | grep rust-auth
+
+# 3. 在真正运行 Rainbow-Auth 的目录里核对 JWT_SECRET
+grep '^JWT_SECRET=' /path/to/real/rainbow-auth/.env
+```
+
+改完密钥后必须重启：
+```bash
+systemctl restart soulforum
+# 以及实际运行 Rainbow-Auth 的重启命令
+```
+
+建议用这组接口一起验证，不要只测登录：
+```bash
+curl -H "Authorization: Bearer <token>" http://127.0.0.1:3000/auth/me
+curl -H "Authorization: Bearer <token>" http://127.0.0.1:3000/surreal/points/me
+curl -H "Authorization: Bearer <token>" \
+  "http://127.0.0.1:3000/surreal/personal_messages?folder=inbox"
+```
+
+判读方式：
+- `auth/me=200` 且 `/surreal/*=401`：优先检查 `JWT_SECRET` 是否和真实签发方一致
+- 两者都 `200`：认证链路正常
+
 ## SurrealDB 初始化
 默认命名空间 `auth`、数据库 `main`：
 ```bash

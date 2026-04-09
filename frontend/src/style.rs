@@ -221,14 +221,15 @@ a { color: inherit; text-decoration: none; }
     gap: 10px;
     margin-top: 8px;
     padding: 12px;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(44, 44, 44, 0.18);
     border-radius: var(--radius-soft);
-    background: #ffffff;
+    background: linear-gradient(180deg, #2f2b29 0%, #24201f 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .points-entry--compact {
     gap: 8px;
     padding: 10px;
-    background: #fafafa;
+    background: linear-gradient(180deg, #36302d 0%, #2a2523 100%);
 }
 .points-entry__header {
     display: flex;
@@ -239,7 +240,7 @@ a { color: inherit; text-decoration: none; }
 }
 .points-entry__hint {
     margin: 0;
-    color: var(--muted);
+    color: #c0b5ac;
     font-size: 12px;
     line-height: 1.45;
 }
@@ -256,21 +257,21 @@ a { color: inherit; text-decoration: none; }
     min-width: 74px;
     padding: 6px 10px;
     border-radius: 999px;
-    background: rgba(225, 75, 75, 0.08);
-    border: 1px solid rgba(225, 75, 75, 0.16);
+    background: rgba(201, 155, 103, 0.12);
+    border: 1px solid rgba(201, 155, 103, 0.26);
 }
 .points-badge__label {
     display: block;
     font-size: 10px;
     text-transform: uppercase;
-    color: var(--muted);
+    color: #bcaea3;
     letter-spacing: 0.05em;
 }
 .points-badge__metric strong {
     display: block;
     margin-top: 2px;
     font-size: 14px;
-    color: var(--accent-2);
+    color: #f6e5cc;
 }
 .points-badge__meta {
     display: inline-flex;
@@ -281,7 +282,7 @@ a { color: inherit; text-decoration: none; }
 .points-badge__trust {
     font-size: 12px;
     font-weight: 700;
-    color: var(--accent-2);
+    color: #d7b788;
 }
 .points-badge__state {
     padding: 4px 8px;
@@ -290,14 +291,17 @@ a { color: inherit; text-decoration: none; }
     font-weight: 800;
     letter-spacing: 0.05em;
     text-transform: uppercase;
+    border: 1px solid transparent;
 }
 .points-badge__state.is-pending {
-    color: #8d5d08;
-    background: rgba(255, 196, 0, 0.16);
+    color: #e1bd79;
+    background: rgba(164, 111, 27, 0.24);
+    border-color: rgba(225, 189, 121, 0.18);
 }
 .points-badge__state.is-ready {
-    color: #0f6f5d;
-    background: rgba(11, 208, 176, 0.14);
+    color: #9bd4c5;
+    background: rgba(32, 96, 82, 0.42);
+    border-color: rgba(155, 212, 197, 0.16);
 }
 .pill {
     display: inline-block;

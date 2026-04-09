@@ -30,7 +30,10 @@ impl<S: ForumService> DisplayController<S> {
             .service
             .fetch_topic_messages(topic_id, start, per_page)?;
 
-        let rendered: Vec<_> = messages.iter().map(|msg| render_message(ctx, msg)).collect();
+        let rendered: Vec<_> = messages
+            .iter()
+            .map(|msg| render_message(ctx, msg))
+            .collect();
         ctx.context.set("messages", rendered);
         ctx.context.set("page_start", start);
         ctx.context.set("messages_per_page", per_page);
@@ -161,8 +164,10 @@ mod tests {
     #[test]
     fn display_loads_messages() {
         let service = InMemoryService::default();
-        let mut ctx = ForumContext::default();
-        ctx.topic_id = Some(1);
+        let mut ctx = ForumContext {
+            topic_id: Some(1),
+            ..Default::default()
+        };
         ctx.mod_settings.set("defaultMaxMessages", 10);
         DisplayController::new(service)
             .display(&mut ctx)
@@ -172,8 +177,10 @@ mod tests {
     #[test]
     fn display_sets_notify_button() {
         let service = InMemoryService::default();
-        let mut ctx = ForumContext::default();
-        ctx.topic_id = Some(1);
+        let mut ctx = ForumContext {
+            topic_id: Some(1),
+            ..Default::default()
+        };
         ctx.user_info.id = 1;
         ctx.user_info.is_guest = false;
         ctx.user_info.email = "alice@example.com".into();

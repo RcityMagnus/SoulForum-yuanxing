@@ -11,10 +11,15 @@ pub struct HomePageProps {
     pub topics_len: usize,
     pub posts_len: usize,
 
+    pub current_member_label: String,
+    pub points_snapshot: crate::components::points::PointsSnapshot,
+    pub points_hint: String,
+
     pub on_load_boards: EventHandler<()>,
     pub on_check_health: EventHandler<()>,
     pub on_clear_token: EventHandler<()>,
     pub on_sync_csrf: EventHandler<()>,
+    pub on_open_points: EventHandler<()>,
 }
 
 pub fn HomePage(mut props: HomePageProps) -> Element {
@@ -35,6 +40,14 @@ pub fn HomePage(mut props: HomePageProps) -> Element {
                     div { class: "stat-box", strong { "{props.boards_len}" } span { "版块" } }
                     div { class: "stat-box", strong { "{props.topics_len}" } span { "主题" } }
                     div { class: "stat-box", strong { "{props.posts_len}" } span { "帖子" } }
+                }
+                crate::components::points::PointsEntry {
+                    title: format!("{} 的积分", props.current_member_label),
+                    snapshot: props.points_snapshot.clone(),
+                    hint: props.points_hint.clone(),
+                    action_label: "查看 Karma / Merit 说明".to_string(),
+                    compact: Some(true),
+                    on_action: move |_| props.on_open_points.call(()),
                 }
             }
         }

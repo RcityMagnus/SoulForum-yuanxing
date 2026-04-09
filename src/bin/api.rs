@@ -19,15 +19,19 @@ use btc_forum_rust::{
 };
 use tower_http::cors::CorsLayer;
 
+#[path = "../agent/mod.rs"]
+mod agent;
 #[path = "../api/mod.rs"]
 mod api;
+
+use agent::router::router as agent_router;
 
 use api::admin_routes::{
     admin_notify, apply_ban, assign_moderator, assign_moderator_by_record, get_board_access,
     get_board_permissions, grant_docs_space_create_by_record, list_action_logs, list_admins,
     list_bans, list_groups, list_users, revoke_ban, revoke_docs_space_create_by_record,
-    revoke_moderator,
-    revoke_moderator_by_record, transfer_admin, update_board_access, update_board_permissions,
+    revoke_moderator, revoke_moderator_by_record, transfer_admin, update_board_access,
+    update_board_permissions,
 };
 use api::attachment_routes::{
     create_attachment_meta, delete_attachment_api, list_attachments, serve_upload,
@@ -45,6 +49,7 @@ use api::personal_message_routes::{
     delete_personal_messages_api, list_personal_messages, mark_personal_messages_read,
     send_personal_message_api,
 };
+use api::points_routes::{create_points_event_api, my_points, points_leaderboard, user_points};
 use api::state::{
     csrf_enabled, find_csrf_cookie, generate_csrf_token, rainbow_auth_base_url, AppState,
     RateLimiter,
@@ -110,6 +115,7 @@ async fn csrf_layer(mut req: Request<Body>, next: Next) -> Response {
     response
 }
 
+#[allow(clippy::items_after_test_module)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -263,6 +269,7 @@ async fn main() {
     };
     let app = Router::new()
         .route("/health", get(health))
+        .nest("/agent/v1", agent_router())
         .route("/metrics", get(metrics))
         .route("/auth/register", post(register))
         .route("/auth/login", post(login))
@@ -300,6 +307,10 @@ async fn main() {
             "/surreal/personal_messages/delete",
             post(delete_personal_messages_api),
         )
+        .route("/surreal/points/me", get(my_points))
+        .route("/surreal/points/users/:member_id", get(user_points))
+        .route("/surreal/points/leaderboard", get(points_leaderboard))
+        .route("/surreal/points/events", post(create_points_event_api))
         .route(
             "/surreal/boards",
             get(surreal_boards).post(create_surreal_board),
@@ -320,10 +331,22 @@ async fn main() {
         .route("/admin/bans/apply", post(apply_ban))
         .route("/admin/bans/revoke", post(revoke_ban))
         .route("/admin/notify", post(admin_notify))
-        .route("/admin/moderators/:member_id/assign", post(assign_moderator))
-        .route("/admin/moderators/:member_id/revoke", post(revoke_moderator))
-        .route("/admin/moderators/assign_by_record", post(assign_moderator_by_record))
-        .route("/admin/moderators/revoke_by_record", post(revoke_moderator_by_record))
+        .route(
+            "/admin/moderators/:member_id/assign",
+            post(assign_moderator),
+        )
+        .route(
+            "/admin/moderators/:member_id/revoke",
+            post(revoke_moderator),
+        )
+        .route(
+            "/admin/moderators/assign_by_record",
+            post(assign_moderator_by_record),
+        )
+        .route(
+            "/admin/moderators/revoke_by_record",
+            post(revoke_moderator_by_record),
+        )
         .route(
             "/admin/docs/grant_space_create_by_record",
             post(grant_docs_space_create_by_record),

@@ -6,32 +6,11 @@ use axum::{
     routing::post,
     Router,
 };
+use btc_forum_rust::auth::AuthClaims;
+use btc_forum_rust::services::{ForumContext, ForumService, InMemoryService};
 use tower::ServiceExt;
 
-use btc_forum_rust::auth::AuthClaims;
-use btc_forum_rust::services::{ForumContext, ForumService, InMemoryService, PostSubmission};
-
-async fn post_handler(state: InMemoryService) -> StatusCode {
-    let mut ctx = ForumContext::default();
-    ctx.user_info.is_guest = false;
-    ctx.user_info.permissions.insert("post_new".into());
-    let submission = PostSubmission {
-        topic_id: None,
-        board_id: 0,
-        message_id: None,
-        subject: "hello".into(),
-        body: "world".into(),
-        icon: "xx".into(),
-        approved: true,
-        send_notifications: false,
-    };
-    match state.persist_post(&ctx, submission) {
-        Ok(_) => StatusCode::OK,
-        Err(_) => StatusCode::BAD_REQUEST,
-    }
-}
-
-async fn reject_layer(mut req: Request<Body>, next: Next) -> impl IntoResponse {
+async fn reject_layer(req: Request<Body>, next: Next) -> impl IntoResponse {
     // Always reject to simulate rate limit
     if req.headers().get("X-REJECT").is_some() {
         return (StatusCode::TOO_MANY_REQUESTS, "rate limited").into_response();

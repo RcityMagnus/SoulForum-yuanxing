@@ -3,8 +3,8 @@ use crate::services::{
 };
 use crate::subs_notify::{delete_notify_prefs, set_notify_prefs};
 use crate::templates::profile_template::{
-    AlertChannel, AlertChannelPreference, AlertPreference, AlertPreferenceGroup,
-    AlertPreferencePage, GroupToggleOption, render_alert_preferences,
+    render_alert_preferences, AlertChannel, AlertChannelPreference, AlertPreference,
+    AlertPreferenceGroup, AlertPreferencePage, GroupToggleOption,
 };
 use serde_json::json;
 

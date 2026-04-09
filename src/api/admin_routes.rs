@@ -89,7 +89,11 @@ fn legacy_id_from_record(record_id: Option<&str>, name: &str) -> i64 {
     let mut hasher = DefaultHasher::new();
     name.hash(&mut hasher);
     let hashed = (hasher.finish() & 0x7FFF_FFFF_FFFF_FFFF) as i64;
-    if hashed == 0 { 1 } else { hashed }
+    if hashed == 0 {
+        1
+    } else {
+        hashed
+    }
 }
 
 fn normalize_user_record_id(raw: &str) -> String {
@@ -104,8 +108,20 @@ fn normalize_user_record_id(raw: &str) -> String {
 fn user_key_from_record_id(raw: &str) -> String {
     let rid = normalize_user_record_id(raw);
     rid.split_once(':')
-        .map(|(_, key)| key.trim().trim_matches('`').trim_matches('⟨').trim_matches('⟩').to_string())
-        .unwrap_or_else(|| rid.trim().trim_matches('`').trim_matches('⟨').trim_matches('⟩').to_string())
+        .map(|(_, key)| {
+            key.trim()
+                .trim_matches('`')
+                .trim_matches('⟨')
+                .trim_matches('⟩')
+                .to_string()
+        })
+        .unwrap_or_else(|| {
+            rid.trim()
+                .trim_matches('`')
+                .trim_matches('⟨')
+                .trim_matches('⟩')
+                .to_string()
+        })
 }
 
 fn auth_user_id_from_record_id(record_id: &str) -> Option<String> {
@@ -346,6 +362,7 @@ async fn persist_user_admin_row_by_name(
     }
 }
 
+#[allow(dead_code)]
 async fn persist_user_admin_row_by_record_id(
     state: &AppState,
     record_id: &str,
@@ -354,7 +371,7 @@ async fn persist_user_admin_row_by_record_id(
     primary_group: Option<i64>,
     additional_groups: Vec<i64>,
 ) -> Result<(), ApiErr> {
-    let rid = normalize_user_record_id(record_id);
+    let _rid = normalize_user_record_id(record_id);
     let rid_key = user_key_from_record_id(record_id);
 
     let full_update = || {
@@ -467,8 +484,11 @@ pub(crate) async fn list_users(
                     Ok(resp) => resp,
                     Err(retry_err) => {
                         error!(error = %retry_err, "failed to list users after reauth");
-                        return api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, retry_err.to_string())
-                            .into_response();
+                        return api_error_from_status(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            retry_err.to_string(),
+                        )
+                        .into_response();
                     }
                 }
             } else {
@@ -499,11 +519,10 @@ pub(crate) async fn list_users(
         .take(params.limit.unwrap_or(200))
         .map(|r| {
             let record_id = r.id.clone();
-            let auth_user_id = r
-                .id
-                .as_deref()
-                .and_then(|rid| rid.split(':').next_back())
-                .map(|s| s.to_string());
+            let auth_user_id =
+                r.id.as_deref()
+                    .and_then(|rid| rid.split(':').next_back())
+                    .map(|s| s.to_string());
             AdminUser {
                 id: legacy_id_from_record(record_id.as_deref(), &r.name),
                 record_id,
@@ -562,8 +581,11 @@ pub(crate) async fn list_admins(
                     Ok(resp) => resp,
                     Err(retry_err) => {
                         error!(error = %retry_err, "failed to list admin users after reauth");
-                        return api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, retry_err.to_string())
-                            .into_response();
+                        return api_error_from_status(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            retry_err.to_string(),
+                        )
+                        .into_response();
                     }
                 }
             } else {
@@ -834,7 +856,7 @@ pub(crate) async fn apply_ban(
         id: 0,
         reason: payload.reason.clone(),
         expires_at: Some(chrono::DateTime::from_timestamp(until, 0).unwrap()),
-        cannot_post: payload.cannot_post || payload.cannot_access || (!payload.cannot_post && !payload.cannot_access),
+        cannot_post: payload.cannot_post || payload.cannot_access,
         cannot_access: payload.cannot_access,
         conditions: vec![BanCondition {
             id: 0,
@@ -988,7 +1010,7 @@ pub(crate) async fn assign_moderator(
     }
     let primary_group = row.primary_group;
     let mut additional_groups = dedup_groups(row.additional_groups.unwrap_or_default());
-    if primary_group != Some(2) && !additional_groups.iter().any(|g| *g == 2) {
+    if primary_group != Some(2) && !additional_groups.contains(&2) {
         additional_groups.push(2);
     }
     additional_groups = dedup_groups(additional_groups);
@@ -1120,18 +1142,20 @@ pub(crate) async fn transfer_admin(
     if let Err(resp) = verify_csrf(&headers) {
         return resp.into_response();
     }
-    let (target_member_id, _target_record_id, target_name, _target_row) = if let Some(target_record_id) =
-        payload.target_record_id.as_deref()
-    {
-        let (resolved_record_id, name, row) =
-            match load_user_admin_row_by_record_id(&state, target_record_id).await {
-                Ok(v) => v,
-                Err(resp) => {
-                    // Backward-compat: allow passing legacy numeric member id in target_record_id.
-                    if resp.0 == StatusCode::NOT_FOUND {
-                        if let Ok(legacy_id) = target_record_id.trim().parse::<i64>() {
-                            let (rid, resolved_name) =
-                                match resolve_user_identity_by_legacy_id(&state, legacy_id).await {
+    let (target_member_id, _target_record_id, target_name, _target_row) =
+        if let Some(target_record_id) = payload.target_record_id.as_deref() {
+            let (resolved_record_id, name, row) =
+                match load_user_admin_row_by_record_id(&state, target_record_id).await {
+                    Ok(v) => v,
+                    Err(resp) => {
+                        // Backward-compat: allow passing legacy numeric member id in target_record_id.
+                        if resp.0 == StatusCode::NOT_FOUND {
+                            if let Ok(legacy_id) = target_record_id.trim().parse::<i64>() {
+                                let (rid, resolved_name) = match resolve_user_identity_by_legacy_id(
+                                    &state, legacy_id,
+                                )
+                                .await
+                                {
                                     Ok(v) => v,
                                     Err(resp2) => {
                                         error!(
@@ -1145,23 +1169,34 @@ pub(crate) async fn transfer_admin(
                                         return resp2.into_response();
                                     }
                                 };
-                            let resolved_row =
-                                match load_user_admin_row_by_name(&state, &resolved_name).await {
-                                    Ok(v) => v,
-                                    Err(resp2) => {
-                                        error!(
-                                            status = %resp2.0,
-                                            code = ?resp2.1.0.code,
-                                            message = %resp2.1.0.message,
-                                            target_record_id = %target_record_id,
-                                            legacy_id,
-                                            resolved_name = %resolved_name,
-                                            "transfer_admin: fallback load target row failed"
-                                        );
-                                        return resp2.into_response();
-                                    }
-                                };
-                            (rid, resolved_name, resolved_row)
+                                let resolved_row =
+                                    match load_user_admin_row_by_name(&state, &resolved_name).await
+                                    {
+                                        Ok(v) => v,
+                                        Err(resp2) => {
+                                            error!(
+                                                status = %resp2.0,
+                                                code = ?resp2.1.0.code,
+                                                message = %resp2.1.0.message,
+                                                target_record_id = %target_record_id,
+                                                legacy_id,
+                                                resolved_name = %resolved_name,
+                                                "transfer_admin: fallback load target row failed"
+                                            );
+                                            return resp2.into_response();
+                                        }
+                                    };
+                                (rid, resolved_name, resolved_row)
+                            } else {
+                                error!(
+                                    status = %resp.0,
+                                    code = ?resp.1.0.code,
+                                    message = %resp.1.0.message,
+                                    target_record_id = %target_record_id,
+                                    "transfer_admin: failed to load target by record id"
+                                );
+                                return resp.into_response();
+                            }
                         } else {
                             error!(
                                 status = %resp.0,
@@ -1172,67 +1207,58 @@ pub(crate) async fn transfer_admin(
                             );
                             return resp.into_response();
                         }
-                    } else {
+                    }
+                };
+            let legacy_id = legacy_id_from_record(Some(&resolved_record_id), &name);
+            (legacy_id, resolved_record_id, name, row)
+        } else {
+            let Some(target_member_id) = payload.target_member_id else {
+                return api_error_from_status(
+                    StatusCode::BAD_REQUEST,
+                    "target_member_id or target_record_id required",
+                )
+                .into_response();
+            };
+            if target_member_id <= 0 {
+                return api_error_from_status(StatusCode::BAD_REQUEST, "invalid target_member_id")
+                    .into_response();
+            }
+            let (resolved_record_id, target_name) =
+                match resolve_user_identity_by_legacy_id(&state, target_member_id).await {
+                    Ok(v) => v,
+                    Err(resp) => {
                         error!(
                             status = %resp.0,
                             code = ?resp.1.0.code,
                             message = %resp.1.0.message,
-                            target_record_id = %target_record_id,
-                            "transfer_admin: failed to load target by record id"
+                            target_member_id,
+                            "transfer_admin: failed to resolve target by legacy id"
                         );
                         return resp.into_response();
                     }
-                }
-            };
-        let legacy_id = legacy_id_from_record(Some(&resolved_record_id), &name);
-        (legacy_id, resolved_record_id, name, row)
-    } else {
-        let Some(target_member_id) = payload.target_member_id else {
-            return api_error_from_status(
-                StatusCode::BAD_REQUEST,
-                "target_member_id or target_record_id required",
-            )
-            .into_response();
-        };
-        if target_member_id <= 0 {
-            return api_error_from_status(StatusCode::BAD_REQUEST, "invalid target_member_id")
-                .into_response();
-        }
-        let (resolved_record_id, target_name) =
-            match resolve_user_identity_by_legacy_id(&state, target_member_id).await {
-                Ok(v) => v,
+                };
+            let target_row = match load_user_admin_row_by_name(&state, &target_name).await {
+                Ok(row) => row,
                 Err(resp) => {
                     error!(
                         status = %resp.0,
                         code = ?resp.1.0.code,
                         message = %resp.1.0.message,
-                        target_member_id,
-                        "transfer_admin: failed to resolve target by legacy id"
+                        target_name = %target_name,
+                        "transfer_admin: failed to load target row by name"
                     );
                     return resp.into_response();
                 }
             };
-        let target_row = match load_user_admin_row_by_name(&state, &target_name).await {
-            Ok(row) => row,
-            Err(resp) => {
-                error!(
-                    status = %resp.0,
-                    code = ?resp.1.0.code,
-                    message = %resp.1.0.message,
-                    target_name = %target_name,
-                    "transfer_admin: failed to load target row by name"
-                );
-                return resp.into_response();
-            }
+            let resolved_target_member_id =
+                legacy_id_from_record(Some(&resolved_record_id), &target_name);
+            (
+                resolved_target_member_id,
+                resolved_record_id,
+                target_name,
+                target_row,
+            )
         };
-        let resolved_target_member_id = legacy_id_from_record(Some(&resolved_record_id), &target_name);
-        (
-            resolved_target_member_id,
-            resolved_record_id,
-            target_name,
-            target_row,
-        )
-    };
     if target_member_id == ctx.user_info.id {
         return api_error_from_status(
             StatusCode::BAD_REQUEST,
@@ -1312,10 +1338,11 @@ pub(crate) async fn assign_moderator_by_record(
     if let Err(resp) = verify_csrf(&headers) {
         return resp.into_response();
     }
-    let (record_id, target_name, row) = match load_user_admin_row_by_record_id(&state, &payload.record_id).await {
-        Ok(v) => v,
-        Err(resp) => return resp.into_response(),
-    };
+    let (record_id, target_name, row) =
+        match load_user_admin_row_by_record_id(&state, &payload.record_id).await {
+            Ok(v) => v,
+            Err(resp) => return resp.into_response(),
+        };
     let role = if row.role.as_deref() == Some("admin") {
         "admin".to_string()
     } else {
@@ -1327,7 +1354,7 @@ pub(crate) async fn assign_moderator_by_record(
     }
     let primary_group = row.primary_group;
     let mut additional_groups = dedup_groups(row.additional_groups.unwrap_or_default());
-    if primary_group != Some(2) && !additional_groups.iter().any(|g| *g == 2) {
+    if primary_group != Some(2) && !additional_groups.contains(&2) {
         additional_groups.push(2);
     }
     additional_groups = dedup_groups(additional_groups);
@@ -1394,8 +1421,7 @@ pub(crate) async fn grant_docs_space_create_by_record(
     let auth_user_id = if let Some(value) = auth_user_id_from_record_id(&record_id) {
         value
     } else {
-        return api_error_from_status(StatusCode::BAD_REQUEST, "invalid record_id")
-            .into_response();
+        return api_error_from_status(StatusCode::BAD_REQUEST, "invalid record_id").into_response();
     };
 
     let role_name = "docs_admin".to_string();
@@ -1410,7 +1436,9 @@ pub(crate) async fn grant_docs_space_create_by_record(
         }
     };
 
-    let already_granted = perms.iter().any(|p| p == "spaces.write" || p == "docs.admin");
+    let already_granted = perms
+        .iter()
+        .any(|p| p == "spaces.write" || p == "docs.admin");
     if !already_granted {
         if let Err(err) = state
             .rainbow_auth
@@ -1470,8 +1498,7 @@ pub(crate) async fn revoke_docs_space_create_by_record(
     let auth_user_id = if let Some(value) = auth_user_id_from_record_id(&record_id) {
         value
     } else {
-        return api_error_from_status(StatusCode::BAD_REQUEST, "invalid record_id")
-            .into_response();
+        return api_error_from_status(StatusCode::BAD_REQUEST, "invalid record_id").into_response();
     };
 
     let role_name = "docs_admin".to_string();
@@ -1486,7 +1513,9 @@ pub(crate) async fn revoke_docs_space_create_by_record(
         }
     };
 
-    let has_docs_create = perms.iter().any(|p| p == "spaces.write" || p == "docs.admin");
+    let has_docs_create = perms
+        .iter()
+        .any(|p| p == "spaces.write" || p == "docs.admin");
     if has_docs_create {
         if let Err(err) = state
             .rainbow_auth
@@ -1530,10 +1559,11 @@ pub(crate) async fn revoke_moderator_by_record(
     if let Err(resp) = verify_csrf(&headers) {
         return resp.into_response();
     }
-    let (record_id, target_name, row) = match load_user_admin_row_by_record_id(&state, &payload.record_id).await {
-        Ok(v) => v,
-        Err(resp) => return resp.into_response(),
-    };
+    let (record_id, target_name, row) =
+        match load_user_admin_row_by_record_id(&state, &payload.record_id).await {
+            Ok(v) => v,
+            Err(resp) => return resp.into_response(),
+        };
     let role = if row.role.as_deref() == Some("admin") {
         "admin".to_string()
     } else {
@@ -1700,8 +1730,11 @@ pub(crate) async fn get_board_permissions(
                     Ok(resp) => resp,
                     Err(retry_err) => {
                         error!(error = %retry_err, "failed to list board permissions after reauth");
-                        return api_error_from_status(StatusCode::INTERNAL_SERVER_ERROR, retry_err.to_string())
-                            .into_response();
+                        return api_error_from_status(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            retry_err.to_string(),
+                        )
+                        .into_response();
                     }
                 }
             } else {

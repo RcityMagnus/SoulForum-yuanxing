@@ -216,6 +216,90 @@ a { color: inherit; text-decoration: none; }
     text-align: center;
 }
 .stat-box strong { font-size: 20px; display: block; color: var(--accent); }
+.points-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-soft);
+    background: #ffffff;
+}
+.points-entry--compact {
+    gap: 8px;
+    padding: 10px;
+    background: #fafafa;
+}
+.points-entry__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.points-entry__hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+}
+.points-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.points-badge--compact {
+    gap: 6px;
+}
+.points-badge__metric {
+    min-width: 74px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(225, 75, 75, 0.08);
+    border: 1px solid rgba(225, 75, 75, 0.16);
+}
+.points-badge__label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+}
+.points-badge__metric strong {
+    display: block;
+    margin-top: 2px;
+    font-size: 14px;
+    color: var(--accent-2);
+}
+.points-badge__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.points-badge__trust {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-2);
+}
+.points-badge__state {
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+.points-badge__state.is-pending {
+    color: #8d5d08;
+    background: rgba(255, 196, 0, 0.16);
+}
+.points-badge__state.is-ready {
+    color: #0f6f5d;
+    background: rgba(11, 208, 176, 0.14);
+}
 .pill {
     display: inline-block;
     padding: 4px 10px;
@@ -942,6 +1026,17 @@ body:has(.app-shell--detail) {
     color: #a9a9a9;
     font-size: 12px;
 }
+.comment-meta--stack {
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+.comment-meta__main {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 .comment-meta strong {
     color: #f1f1f1;
     font-size: 13px;
@@ -951,6 +1046,16 @@ body:has(.app-shell--detail) {
     color: #d7dbe1;
     line-height: 1.65;
     font-size: 14px;
+}
+.comment-card__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+.comment-card__actions .ghost-btn {
+    background: #1c1d22;
+    border-color: #30323a;
 }
 .detail-tools {
     display: grid;

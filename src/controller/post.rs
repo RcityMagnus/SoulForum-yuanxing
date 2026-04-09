@@ -123,10 +123,7 @@ impl<S: ForumService> PostController<S> {
             self.handle_editing_state(ctx, topic_id, msg_id, &allowed_boards)?;
         }
 
-        let editor_value = ctx
-            .context
-            .string("form_message")
-            .unwrap_or_else(|| String::new());
+        let editor_value = ctx.context.string("form_message").unwrap_or_default();
         create_control_richedit(
             ctx,
             RichEditOptions {

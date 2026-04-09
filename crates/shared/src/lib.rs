@@ -37,4 +37,9 @@ pub use dto::personal_message::{
     PersonalMessageListResponse, PersonalMessagePeer, PersonalMessageSendPayload,
     PersonalMessageSendResponse,
 };
+pub use dto::points::{
+    CreatePointsEventPayload, PointsBalance, PointsBalanceResponse, PointsEvent,
+    PointsEventCreateResponse, PointsEventKind, PointsLeaderboardResponse, PointsMetric,
+    PointsUserSummary,
+};
 pub use error::{ApiError, ErrorCode};

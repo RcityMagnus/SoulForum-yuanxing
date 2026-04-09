@@ -8,5 +8,6 @@ pub mod forum_routes;
 pub mod guards;
 pub mod notification_routes;
 pub mod personal_message_routes;
+pub mod points_routes;
 pub mod state;
 pub mod utils;

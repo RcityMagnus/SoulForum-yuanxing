@@ -630,24 +630,23 @@ pub fn app() -> Element {
         });
     };
 
-    let load_topics = move || {
+    let load_topics_for_board = move |board_id: String| {
         let base = api_base.read().clone();
         let jwt = token.read().clone();
         let csrf = csrf_token.read().clone();
         let mut status = status.clone();
         let mut topics = topics.clone();
         let mut posts = posts.clone();
-        let selected_board_id = selected_board.read().clone();
         let mut selected_topic = selected_topic.clone();
         let selected_topic_id = selected_topic.read().clone();
-        if selected_board_id.is_empty() {
+        if board_id.is_empty() {
             status.set("请先选择版块".into());
             return;
         }
         spawn(async move {
             status.set("加载主题中...".into());
             let client = build_client(&base, &jwt, &csrf);
-            match crate::services::forum::load_topics(&client, &selected_board_id).await {
+            match crate::services::forum::load_topics(&client, &board_id).await {
                 Ok(resp) => {
                     let next_topic_id = if !selected_topic_id.trim().is_empty()
                         && resp
@@ -665,7 +664,7 @@ pub fn app() -> Element {
 
                     if !next_topic_id.is_empty() {
                         selected_topic.set(next_topic_id.clone());
-                        replace_browser_path(&forum_path(&selected_board_id, &next_topic_id));
+                        replace_browser_path(&forum_path(&board_id, &next_topic_id));
                         match crate::services::forum::load_posts(&client, &next_topic_id).await {
                             Ok(posts_resp) => {
                                 posts.set(posts_resp.posts);
@@ -2127,7 +2126,7 @@ pub fn app() -> Element {
                                                     posts.set(Vec::new());
                                                     show_topic_detail.set(true);
                                                     replace_browser_path(&forum_path(&board_id, ""));
-                                                    load_topics();
+                                                    load_topics_for_board(board_id.clone());
                                                 },
                                                 div { class: "forum-feed-card__votes",
                                                     span { class: "forum-feed-card__up", "▲" }
@@ -2199,7 +2198,7 @@ pub fn app() -> Element {
                                                         posts.set(Vec::new());
                                                         show_topic_detail.set(true);
                                                         replace_browser_path(&forum_path(&board_id, ""));
-                                                        load_topics();
+                                                        load_topics_for_board(board_id.clone());
                                                     },
                                                     div { class: "forum-side-board-item__icon", "₿" }
                                                     div { class: "forum-side-board-item__body",

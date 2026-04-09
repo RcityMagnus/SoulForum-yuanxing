@@ -130,26 +130,33 @@ pub fn TopicDetailPage(mut props: TopicDetailPageProps) -> Element {
                         }
                     }).unwrap_or_else(|| rsx! {})}
 
-                    div { class: "comment-block" ,
-                        div { class: "comment-compose",
-                            p { class: "meta", "Join the conversation" }
-                            textarea {
-                                value: "{props.new_post_body.read()}",
-                                oninput: move |evt| props.new_post_body.set(evt.value()),
-                                rows: "4",
-                                placeholder: "Write your comment..."
+                    if props.posts.read().first().is_some() {
+                        div { class: "comment-block" ,
+                            div { class: "comment-compose",
+                                p { class: "meta", "Join the conversation" }
+                                textarea {
+                                    value: "{props.new_post_body.read()}",
+                                    oninput: move |evt| props.new_post_body.set(evt.value()),
+                                    rows: "4",
+                                    placeholder: "Write your comment..."
+                                }
+                                div { class: "compose-tools",
+                                    span { "😀" }
+                                    span { "GIF" }
+                                    span { "Aa" }
+                                }
+                                div { class: "actions compose-actions",
+                                    button { class: "ghost-btn", onclick: move |_| props.on_cancel_comment.call(()), "Cancel" }
+                                    button { onclick: move |_| props.on_submit_comment.call(()), "Comment" }
+                                }
                             }
-                            div { class: "compose-tools",
-                                span { "😀" }
-                                span { "GIF" }
-                                span { "Aa" }
-                            }
-                            div { class: "actions compose-actions",
-                                button { class: "ghost-btn", onclick: move |_| props.on_cancel_comment.call(()), "Cancel" }
-                                button { onclick: move |_| props.on_submit_comment.call(()), "Comment" }
-                            }
+                            h3 { class: "comment-title", "Comments ({comment_count})" }
                         }
-                        h3 { class: "comment-title", "Comments ({comment_count})" }
+                    } else {
+                        div { class: "comment-block",
+                            h3 { class: "comment-title", "Comments (0)" }
+                            p { class: "meta", "当前板块暂无可回复主题，请先选择已有主题或先创建主题。" }
+                        }
                     }
 
                     ul { class: "comment-list",
@@ -179,7 +186,7 @@ pub fn TopicDetailPage(mut props: TopicDetailPageProps) -> Element {
                             }
                         })}
                     }
-                    if comment_count == 0 {
+                    if props.posts.read().first().is_some() && comment_count == 0 {
                         p { class: "meta", "还没有回复，直接在上方输入评论即可开始讨论。" }
                     }
                 }

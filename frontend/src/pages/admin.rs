@@ -281,8 +281,8 @@ pub fn AdminPage(mut props: AdminPageProps) -> Element {
             h3 { "版块访问控制" }
             div { class: "grid two",
                 div {
-                    label { "board_id" }
-                    input { value: "{props.access_board_id.read()}", oninput: move |evt| props.access_board_id.set(evt.value()), placeholder: "输入 board_id 或版块名称自动匹配" }
+                    label { "版块内部 ID" }
+                    input { value: "{props.access_board_id.read()}", oninput: move |evt| props.access_board_id.set(evt.value()), placeholder: "输入版块内部 ID，或先在上方点击“用于访问控制”自动填入" }
                     label { "允许的组 (逗号分隔)" }
                     input { value: "{props.access_groups.read()}", oninput: move |evt| props.access_groups.set(evt.value()), placeholder: "0,2,4" }
                     div { class: "meta", "组对照：0=管理员，2=版主，4=普通登录用户" }
@@ -297,12 +297,12 @@ pub fn AdminPage(mut props: AdminPageProps) -> Element {
                             let id = entry.id.clone();
                             rsx! {
                                 li { class: "item",
-                                    strong { "Board #{entry.id}" }
+                                    strong { "版块内部 ID: {entry.id}" }
                                     div { class: "meta", "允许组: {groups}" }
                                     button { class: "ghost-btn", onclick: move |_| {
                                         props.access_board_id.set(id.clone());
                                         props.access_groups.set(groups_text.clone());
-                                        props.status.set(format!("已载入 Board #{} 的访问控制", id));
+                                        props.status.set(format!("已载入版块内部 ID {} 的访问控制", id));
                                     }, "编辑此规则" }
                                 }
                             }
@@ -320,10 +320,10 @@ pub fn AdminPage(mut props: AdminPageProps) -> Element {
                     div {
                         div { class: "meta", "用法：按“版块 + 组”设置细粒度权限。Allow=放行，Deny=禁止（逗号分隔）" }
                         div { class: "meta", "组对照：0=管理员，2=版主，4=普通登录用户" }
-                        label { "board_id" }
-                        input { value: "{props.perm_board_id.read()}", oninput: move |evt| props.perm_board_id.set(evt.value()), placeholder: "board_id" }
-                        label { "group_id" }
-                        input { value: "{props.perm_group_id.read()}", oninput: move |evt| props.perm_group_id.set(evt.value()), placeholder: "group_id" }
+                        label { "版块内部 ID" }
+                        input { value: "{props.perm_board_id.read()}", oninput: move |evt| props.perm_board_id.set(evt.value()), placeholder: "版块内部 ID" }
+                        label { "用户组 ID" }
+                        input { value: "{props.perm_group_id.read()}", oninput: move |evt| props.perm_group_id.set(evt.value()), placeholder: "用户组 ID" }
                         label { "Allow (逗号分隔)" }
                         input { value: "{props.perm_allow.read()}", oninput: move |evt| props.perm_allow.set(evt.value()), placeholder: "post_new,post_reply_any" }
                         label { "Deny (逗号分隔)" }
@@ -342,7 +342,7 @@ pub fn AdminPage(mut props: AdminPageProps) -> Element {
                                 let deny_raw = entry.deny.join(",");
                                 rsx! {
                                     li { class: "item",
-                                        strong { "Board #{entry.board_id} / Group #{entry.group_id}" }
+                                        strong { "版块内部 ID {entry.board_id} / 用户组 ID {entry.group_id}" }
                                         div { class: "meta", "Allow: {allow}" }
                                         div { class: "meta", "Deny: {deny}" }
                                         button { class: "ghost-btn", onclick: move |_| {
@@ -350,7 +350,7 @@ pub fn AdminPage(mut props: AdminPageProps) -> Element {
                                             props.perm_group_id.set(group_id.to_string());
                                             props.perm_allow.set(allow_raw.clone());
                                             props.perm_deny.set(deny_raw.clone());
-                                            props.status.set(format!("已载入 Board #{} Group #{} 权限规则", board_id, group_id));
+                                            props.status.set(format!("已载入版块内部 ID {} / 用户组 ID {} 的权限规则", board_id, group_id));
                                         }, "编辑此规则" }
                                     }
                                 }

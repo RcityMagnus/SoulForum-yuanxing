@@ -49,7 +49,7 @@ pub fn TopicDetailPage(mut props: TopicDetailPageProps) -> Element {
                 p.subject.clone()
             }
         })
-        .unwrap_or_else(|| props.selected_board.read().clone());
+        .unwrap_or_else(|| "主题详情".to_string());
     let current_topic_title = props
         .posts
         .read()

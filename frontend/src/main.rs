@@ -8,7 +8,7 @@ mod style;
 
 #[cfg(target_arch = "wasm32")]
 fn install_favicon() {
-    use wasm_bindgen::JsCast;
+    use web_sys::wasm_bindgen::JsCast;
 
     let Some(window) = web_sys::window() else {
         return;
@@ -35,7 +35,7 @@ fn install_favicon() {
     let _ = link.set_attribute("rel", "icon");
     let _ = link.set_attribute("type", "image/svg+xml");
     let _ = link.set_attribute("href", "/forum/favicon.svg");
-    let _ = head.append_child(&link.unchecked_into());
+    let _ = head.append_child(&link);
 }
 
 fn main() {

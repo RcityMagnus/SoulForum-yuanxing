@@ -30,6 +30,8 @@ use crate::api::client::ApiClient;
 use crate::style::STYLE;
 
 const BUILD_TAG: &str = "ban-click-v2";
+const APP_BASE_PATH: &str = "/forum";
+const API_BASE_PATH: &str = "/forum-api";
 
 // ---------- Types ----------
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -156,6 +158,29 @@ fn build_client(base: &str, token: &str, csrf: &str) -> ApiClient {
         .with_csrf(csrf.to_string())
 }
 
+fn normalize_app_path(path: &str) -> String {
+    if path == APP_BASE_PATH {
+        return "/".to_string();
+    }
+    if let Some(rest) = path.strip_prefix(APP_BASE_PATH) {
+        return if rest.is_empty() {
+            "/".to_string()
+        } else {
+            rest.to_string()
+        };
+    }
+    path.to_string()
+}
+
+fn app_href(path: &str) -> String {
+    let normalized = if path.is_empty() { "/" } else { path };
+    if normalized == "/" {
+        format!("{}/", APP_BASE_PATH)
+    } else {
+        format!("{}{}", APP_BASE_PATH, normalized)
+    }
+}
+
 fn parse_forum_path(path: &str) -> (Option<String>, Option<String>) {
     let trimmed = path.trim_matches('/');
     if trimmed.is_empty() {
@@ -187,7 +212,7 @@ fn replace_browser_path(path: &str) {
             let _ = history.replace_state_with_url(
                 &web_sys::wasm_bindgen::JsValue::NULL,
                 "",
-                Some(path),
+                Some(&app_href(path)),
             );
         }
     }
@@ -232,7 +257,7 @@ async fn post_json<T: serde::de::DeserializeOwned, B: serde::Serialize>(
 // ---------- App ----------
 pub fn app() -> Element {
     // signals
-    let mut api_base = use_signal(|| "/api".to_string());
+    let mut api_base = use_signal(|| API_BASE_PATH.to_string());
     let mut token = use_signal(|| load_token_from_storage().unwrap_or_default());
     let mut current_user = use_signal(|| load_user_from_storage().unwrap_or_default());
     let mut status = use_signal(|| "等待操作...".to_string());
@@ -243,6 +268,7 @@ pub fn app() -> Element {
     let mut admin_bootstrapped = use_signal(|| false);
     let start_path = window()
         .and_then(|win| win.location().pathname().ok())
+        .map(|path| normalize_app_path(&path))
         .unwrap_or_else(|| "/".to_string());
     let start_path_admin = start_path.clone();
     let start_path_register = start_path.clone();

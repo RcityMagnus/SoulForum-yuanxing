@@ -1,5 +1,7 @@
 use dioxus::prelude::*;
 
+const APP_BASE_PATH: &str = "/forum";
+
 #[derive(Props, Clone, PartialEq)]
 pub struct HomePageProps {
     pub api_base: Signal<String>,
@@ -31,7 +33,7 @@ pub fn HomePage(mut props: HomePageProps) -> Element {
                 p { "直连 SurrealDB 的论坛 Demo：注册、发帖、回帖与权限全部在这里自测。" }
                 div { class: "hero__actions",
                     button { onclick: move |_| props.on_load_boards.call(()), "加载版块/主题" }
-                    a { class: "ghost-btn", href: "/admin", "管理后台 (/admin)" }
+                    a { class: "ghost-btn", href: "{APP_BASE_PATH}/admin", "管理后台 (/admin)" }
                 }
             }
             div { class: "hero__panel",

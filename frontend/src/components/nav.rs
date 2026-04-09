@@ -3,6 +3,8 @@ use gloo_timers::future::TimeoutFuture;
 use js_sys::Date;
 use web_sys::wasm_bindgen::JsValue;
 
+const APP_BASE_PATH: &str = "/forum";
+
 #[derive(Props, Clone, PartialEq)]
 pub struct TopNavProps {
     pub is_admin: bool,
@@ -59,7 +61,7 @@ pub fn TopNav(props: TopNavProps) -> Element {
             div { class: "nav-tabs",
                 a {
                     class: if is_home_active { "nav-tab active" } else { "nav-tab" },
-                    href: "/",
+                    href: "{APP_BASE_PATH}/",
                     onclick: move |_| props.on_home.call(()),
                     "Home"
                 }
@@ -69,13 +71,13 @@ pub fn TopNav(props: TopNavProps) -> Element {
                 {if !props.is_logged_in { rsx! {
                     a {
                         class: if props.is_login { "nav-tab active" } else { "nav-tab" },
-                        href: "/login",
+                        href: "{APP_BASE_PATH}/login",
                         onclick: move |_| props.on_login.call(()),
                         "Login"
                     }
                     a {
                         class: if props.is_register { "nav-tab active" } else { "nav-tab" },
-                        href: "/register",
+                        href: "{APP_BASE_PATH}/register",
                         onclick: move |_| props.on_register.call(()),
                         "Register"
                     }
@@ -91,7 +93,7 @@ pub fn TopNav(props: TopNavProps) -> Element {
 
                 a {
                     class: if props.is_admin { "nav-tab active" } else { "nav-tab" },
-                    href: "/admin",
+                    href: "{APP_BASE_PATH}/admin",
                     onclick: move |_| props.on_admin.call(()),
                     "Admin"
                 }

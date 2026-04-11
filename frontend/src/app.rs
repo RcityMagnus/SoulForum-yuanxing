@@ -110,10 +110,11 @@ fn pm_error_message(err: &str) -> Option<&'static str> {
 }
 
 fn save_token_to_storage(token: &str) {
-    // Stop-gap: never persist JWT in localStorage (XSS makes theft trivial).
-    // sessionStorage is still accessible to JS, but limits persistence to the current tab session.
     if let Some(win) = window() {
         if let Ok(Some(storage)) = win.session_storage() {
+            let _ = storage.set_item("jwt_token", token);
+        }
+        if let Ok(Some(storage)) = win.local_storage() {
             let _ = storage.set_item("jwt_token", token);
         }
     }
@@ -122,10 +123,18 @@ fn load_token_from_storage() -> Option<String> {
     window()
         .and_then(|win| win.session_storage().ok().flatten())
         .and_then(|s| s.get_item("jwt_token").ok().flatten())
+        .or_else(|| {
+            window()
+                .and_then(|win| win.local_storage().ok().flatten())
+                .and_then(|s| s.get_item("jwt_token").ok().flatten())
+        })
 }
 fn save_user_to_storage(name: &str) {
     if let Some(win) = window() {
         if let Ok(Some(storage)) = win.session_storage() {
+            let _ = storage.set_item("user_name", name);
+        }
+        if let Ok(Some(storage)) = win.local_storage() {
             let _ = storage.set_item("user_name", name);
         }
     }
@@ -134,6 +143,11 @@ fn load_user_from_storage() -> Option<String> {
     window()
         .and_then(|win| win.session_storage().ok().flatten())
         .and_then(|s| s.get_item("user_name").ok().flatten())
+        .or_else(|| {
+            window()
+                .and_then(|win| win.local_storage().ok().flatten())
+                .and_then(|s| s.get_item("user_name").ok().flatten())
+        })
 }
 fn clear_auth_storage() {
     // Best-effort clear both storages for backward compatibility with older builds.

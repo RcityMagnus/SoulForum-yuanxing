@@ -238,6 +238,35 @@ fn build_cross_app_link(app_base_path: &str, token: Option<&str>, next_path: &st
     )
 }
 
+fn friendly_login_error(err: &str) -> String {
+    if err.contains("Invalid email or password")
+        || err.contains("Authentication failed")
+        || err.contains("401")
+        || err.contains("Unauthorized")
+    {
+        "登录失败，请检查邮箱和密码".to_string()
+    } else if err.contains("429") || err.contains("Too Many Requests") {
+        "登录过于频繁，请稍后再试".to_string()
+    } else if err.contains("502") || err.contains("Bad Gateway") {
+        "登录服务暂时不可用，请稍后再试".to_string()
+    } else {
+        "登录失败".to_string()
+    }
+}
+
+fn friendly_register_error(err: &str) -> String {
+    if err.contains("Email already registered") || err.contains("邮箱") || err.contains("已注册")
+    {
+        "该邮箱已注册，请直接登录或更换邮箱".to_string()
+    } else if err.contains("429") || err.contains("Too Many Requests") {
+        "注册过于频繁，请稍后再试".to_string()
+    } else if err.contains("502") || err.contains("Bad Gateway") {
+        "注册服务暂时不可用，请稍后再试".to_string()
+    } else {
+        "注册失败".to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::build_cross_app_link_for_protocol;
@@ -528,7 +557,7 @@ pub fn app() -> Element {
                     }));
                 }
                 Err(err) => {
-                    let message = format!("登录失败：{err}");
+                    let message = friendly_login_error(&err);
                     status.set(message.clone());
                     notice.set(Some(UiNotice {
                         kind: NoticeKind::Error,
@@ -581,14 +610,7 @@ pub fn app() -> Element {
                     }));
                 }
                 Err(err) => {
-                    let friendly = if err.contains("Email already registered")
-                        || err.contains("邮箱")
-                        || err.contains("已注册")
-                    {
-                        "该邮箱已注册，请直接登录或更换邮箱".to_string()
-                    } else {
-                        format!("注册失败：{err}")
-                    };
+                    let friendly = friendly_register_error(&err);
                     status.set(friendly.clone());
                     notice.set(Some(UiNotice {
                         kind: NoticeKind::Error,

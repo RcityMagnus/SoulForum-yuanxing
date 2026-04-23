@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>词语过滤</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .filter-subtabs {
+      display: flex;
+      gap: 26px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 18px;
+    }
+
+    .filter-subtab {
+      padding: 10px 2px 14px;
+      color: #24364d;
+      border-bottom: 3px solid transparent;
+    }
+
+    .filter-subtab.is-active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .filter-panel {
+      display: none;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .filter-panel.is-active {
+      display: block;
+    }
+
+    .filter-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .filter-tips {
+      margin: 0;
+      padding-left: 22px;
+      line-height: 1.9;
+      color: #46566d;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-bar input[type="text"] {
+      width: 200px;
+    }
+
+    .filter-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .filter-table th,
+    .filter-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .filter-table thead th {
+      color: #26384d;
+      font-weight: 700;
+      background: transparent;
+    }
+
+    .filter-inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-inline input[type="text"] {
+      width: 136px;
+    }
+
+    .filter-replacement.is-hidden {
+      display: none;
+    }
+
+    .filter-add-row {
+      color: #ff8a00;
+      font-weight: 700;
+      padding: 14px 0;
+    }
+
+    .filter-foot {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .filter-batch-form {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 18px 28px;
+      align-items: start;
+    }
+
+    .filter-batch-form textarea {
+      min-height: 110px;
+    }
+
+    .filter-radio-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .filter-note {
+      color: var(--muted);
+      line-height: 1.9;
+      font-size: 13px;
+    }
+
+    @media (max-width: 980px) {
+      .filter-batch-form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <script defer>
+    document.addEventListener("DOMContentLoaded", () => {
+      const tabs = Array.from(document.querySelectorAll("[data-filter-tab]"));
+      const panels = Array.from(document.querySelectorAll("[data-filter-panel]"));
+      const actionSelects = Array.from(document.querySelectorAll("[data-filter-action]"));
+
+      function activate(name) {
+        tabs.forEach((tab) => {
+          tab.classList.toggle("is-active", tab.dataset.filterTab === name);
+        });
+        panels.forEach((panel) => {
+          panel.classList.toggle("is-active", panel.dataset.filterPanel === name);
+        });
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", (event) => {
+          event.preventDefault();
+          activate(tab.dataset.filterTab);
+        });
+      });
+
+      actionSelects.forEach((select) => {
+        const wrapper = select.closest(".filter-inline");
+        const replacement = wrapper ? wrapper.querySelector(".filter-replacement") : null;
+
+        function syncAction() {
+          if (!replacement) return;
+          replacement.classList.toggle("is-hidden", select.value !== "replace");
+        }
+
+        select.addEventListener("change", syncAction);
+        syncAction();
+      });
+
+      activate("manage");
+    });
+  </script>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>词语过滤</h1>
+  <p>论坛管理员后台 &gt; 内容治理 &gt; 敏感词</p>
+  <nav>
+  <a href="./01-主题管理列表.html">主题管理</a>
+  <a href="./02-帖子管理列表.html">帖子管理</a>
+  <a href="./11-附件管理.html">附件管理</a>
+  <a href="./08-回收站管理.html">回收站</a>
+  <a href="../审核与举报/01-待审核帖子列表.html">审核中心</a>
+  <a href="../审核与举报/06-举报列表.html">举报处理</a>
+  <a href="./09-敏感词.html">敏感词</a></nav>
+
+  <div class="filter-subtabs">
+    <a class="filter-subtab" href="#" data-filter-tab="manage">管理</a>
+    <a class="filter-subtab" href="#" data-filter-tab="batch">批量添加</a>
+  </div>
+
+  <section class="filter-panel" data-filter-panel="manage">
+    <div class="filter-bar">
+      <span>关键词:</span>
+      <input type="text">
+      <button type="button">搜索</button>
+    </div>
+  </section>
+
+  <section class="filter-panel" data-filter-panel="manage">
+    <table class="filter-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>敏感词</th>
+          <th>过滤动作</th>
+          <th>操作者</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><input type="text" value="特朗普"></td>
+          <td>
+            <div class="filter-inline">
+              <select data-filter-action>
+                <option value="replace" selected>替换关键词</option>
+                <option value="ban">禁止关键词</option>
+              </select>
+              <input class="filter-replacement" type="text" value="***">
+            </div>
+          </td>
+          <td>admin</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td colspan="3" class="filter-add-row">⊕ 新增</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="filter-foot">
+      <label><input type="checkbox"> 删?</label>
+      <button type="button">提交</button>
+    </div>
+  </section>
+
+  <section class="filter-panel" data-filter-panel="batch">
+    <div class="filter-title">技巧提示</div>
+    <ul class="filter-tips">
+      <li>每行一组过滤词语，敏感词和替换词之间使用“=”进行分割；</li>
+      <li>如果只是想将某个词语直接替换成 **，则只输入词语即可；</li>
+    </ul>
+  </section>
+
+  <section class="filter-panel" data-filter-panel="batch">
+    <form class="filter-batch-form">
+      <div>
+        <textarea>主席
+元首={BANNED}</textarea>
+      </div>
+      <div></div>
+
+      <div class="filter-radio-list">
+        <label><input type="radio" name="batch-import"> 不导入已经存在的词语</label>
+        <label><input type="radio" name="batch-import"> 使用新的设置覆盖已经存在的词语</label>
+      </div>
+      <div></div>
+
+      <div><button type="button">提交</button></div>
+      <div></div>
+    </form>
+  </section>
+</body>
+</html>

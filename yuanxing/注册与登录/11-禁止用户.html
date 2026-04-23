@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>禁止用户</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .ban-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .ban-search {
+      display: grid;
+      justify-content: center;
+      gap: 12px;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    .ban-search label {
+      font-size: 18px;
+      color: #111827;
+    }
+
+    .ban-search input {
+      width: 260px;
+    }
+
+    .ban-search-actions {
+      display: flex;
+      justify-content: center;
+      gap: 36px;
+      padding-top: 8px;
+    }
+
+    .ban-search-actions button {
+      min-width: 72px;
+      min-height: 42px;
+      font-size: 16px;
+    }
+
+    .ban-form {
+      display: grid;
+      grid-template-columns: 260px minmax(360px, 1fr);
+      gap: 22px 28px;
+      padding: 22px;
+      background: #f7fafc;
+      align-items: start;
+    }
+
+    .ban-label {
+      font-weight: 700;
+      color: #26384d;
+    }
+
+    .ban-form input[type="text"] {
+      max-width: 260px;
+      width: 100%;
+    }
+
+    .ban-current {
+      align-self: center;
+    }
+
+    .ban-options label {
+      display: block;
+      margin: 9px 0;
+    }
+
+    .ban-options label:first-child {
+      color: #0dbb31;
+      font-weight: 700;
+    }
+
+    .ban-hint {
+      color: var(--muted);
+      line-height: 1.8;
+      margin-top: 8px;
+    }
+
+    .ban-clear-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .ban-form textarea {
+      width: 260px;
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .ban-actions {
+      grid-column: 1 / -1;
+      padding-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>禁止用户</h1>
+  <p>论坛管理员后台 &gt; 注册与封禁 &gt; 禁止用户</p>
+  <nav>
+    <a href="./01-后台注册新会员.html">后台注册新会员</a>
+    <a href="./02-注册协议设置.html">注册协议设置</a>
+    <a href="./03-隐私政策设置.html">隐私政策设置</a>
+    <a href="./04-保留用户名设置.html">保留用户名设置</a>
+    <a href="./05-注册设置.html">注册设置</a>
+    <a href="./06-登录安全设置.html">登录安全设置</a>
+    <a href="./07-验证码设置.html">验证码设置</a>
+    <a href="./08-二步验证设置.html">二步验证设置</a>
+    <a href="./09-IP访问限制.html">IP访问限制</a>
+    <a href="./10-后台白名单设置.html">后台白名单设置</a>
+    <a href="./11-禁止用户.html">禁止用户</a>
+  </nav>
+
+  <section class="ban-card">
+    <form class="ban-search">
+      <label>请先输入您要进行操作的用户名</label>
+      <input type="text">
+      <div class="ban-search-actions">
+        <button type="button">确定</button>
+        <button type="button">取消</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="ban-card">
+    <form class="ban-form">
+      <div class="ban-label">禁止用户名:</div>
+      <input type="text" value="test01">
+
+      <div class="ban-label">当前状态:</div>
+      <div class="ban-current">正常状态</div>
+
+      <div class="ban-label">禁止类型:</div>
+      <div class="ban-options">
+        <label><input type="radio" name="ban-type" checked> 正常状态</label>
+        <label><input type="radio" name="ban-type"> 禁止发言</label>
+        <label><input type="radio" name="ban-type"> 禁止访问</label>
+        <label><input type="radio" name="ban-type"> 锁定用户</label>
+        <div class="ban-hint">选正常状态可以恢复该用户的普通身份<br>锁定用户后该用户将无法访问及进行任何操作。</div>
+      </div>
+
+      <div class="ban-label">清空该用户相关内容:</div>
+      <div class="ban-clear-row">
+        <label><input type="checkbox"> 清除该用户帖子</label>
+      </div>
+
+      <div class="ban-label">理由:</div>
+      <div>
+        <textarea></textarea>
+        <div class="ban-hint">禁止或解禁用户的理由<br>双击输入框可扩大/缩小</div>
+      </div>
+
+      <div class="ban-actions">
+        <button type="button">提交</button>
+      </div>
+    </form>
+  </section>
+</body>
+</html>

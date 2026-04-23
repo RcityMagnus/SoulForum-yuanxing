@@ -3,56 +3,203 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>待审核帖子列表</title>
+  <title>审核主题</title>
   <link rel="stylesheet" href="../assets/theme.css">
   <script defer src="../assets/theme.js"></script>
+  <style>
+    .audit-subtabs {
+      display: inline-flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .audit-subtabs a {
+      padding: 14px 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      min-width: 108px;
+    }
+
+    .audit-subtabs a + a {
+      border-top: 0;
+    }
+
+    .audit-subtabs a.is-active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .audit-panel {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 18px;
+      padding: 18px 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .audit-filter-grid {
+      display: grid;
+      grid-template-columns: 100px 180px 100px 180px 1fr;
+      gap: 16px 18px;
+      align-items: center;
+    }
+
+    .audit-filter-grid .wide-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .audit-item {
+      border-top: 1px solid var(--line);
+      padding: 22px 0 12px;
+    }
+
+    .audit-item:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .audit-item-grid {
+      display: grid;
+      grid-template-columns: 90px minmax(0, 1fr) 120px 130px 90px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .audit-radio-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-top: 4px;
+    }
+
+    .audit-title {
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .audit-meta,
+    .audit-text,
+    .audit-side {
+      color: #4a5568;
+    }
+
+    .audit-text {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid #eef2f7;
+    }
+
+    .audit-item-footer {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 18px;
+      padding-left: 108px;
+    }
+
+    .audit-bottom {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+      border-top: 1px solid #dbe5f1;
+      padding-top: 16px;
+      margin-top: 8px;
+    }
+
+    .audit-link-row {
+      color: var(--primary);
+    }
+
+    @media (max-width: 1100px) {
+      .audit-filter-grid,
+      .audit-item-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .audit-item-footer {
+        padding-left: 0;
+      }
+    }
+  </style>
 </head>
 <body>
   <p><a href="../index.html">返回目录</a></p>
-  <h1>待审核帖子列表</h1>
-  <p>论坛管理员后台 &gt; 审核与举报 &gt; 待审核帖子列表</p>
+  <h1>审核主题</h1>
+  <p>论坛管理员后台 &gt; 内容治理 &gt; 审核中心</p>
   <nav>
-  <a href="./01-待审核帖子列表.html">待审核帖子列表</a>
-  <a href="./02-待审核主题列表.html">待审核主题列表</a>
-  <a href="./03-审核详情页.html">审核详情页</a>
-  <a href="./04-批量审核操作页.html">批量审核操作页</a>
-  <a href="./05-审核历史记录.html">审核历史记录</a>
-  <a href="./06-举报列表.html">举报列表</a>
-  <a href="./07-举报详情.html">举报详情</a>
-  <a href="./08-举报处理页.html">举报处理页</a>
-  <a href="./09-举报分类设置.html">举报分类设置</a>
-  <a href="./10-举报处理记录.html">举报处理记录</a>
-</nav>
-  <section>
-  <h2>处理对象</h2>
-  <ul>
-    <li>业务对象：待审核帖子列表</li>
-    <li>当前状态：待执行</li>
-    <li>来源模块：审核与举报</li>
-    <li>风险等级：中</li>
-  </ul>
-</section>
-<form>
-  <fieldset>
-    <legend>执行表单</legend>
-<p><label>目标对象<br><input type="text" value="输入主题、帖子、会员或配置目标"></label></p>
-<p><label>处理方式<br><select><option selected>保留</option><option>调整</option><option>迁移</option><option>封禁</option><option>人工复核</option></select></label></p>
-<p><label>生效时间<br><select><option selected>立即</option><option>24小时后</option><option>下个整点</option><option>手动发布</option></select></label></p>
-<p class="full"><label>执行说明<br><textarea>填写本次操作的原因、影响范围与回滚说明。</textarea></label></p>
-<p class="full"><label>通知范围<br><input type="text" value="相关会员、版主、管理员"></label></p>
-  </fieldset>
-  <p><button>确认执行</button> <button type="button">恢复默认</button></p>
-</form>
-<section>
-  <h2>相关记录</h2>
-  <table>
-  <thead><tr><th>记录项</th><th>状态</th><th>优先级</th><th>时间</th><th>操作</th></tr></thead>
-  <tbody>
-    <tr><td>待审核帖子列表对象A</td><td>处理中</td><td>高优先级</td><td>今天 09:30</td><td>查看</td></tr>
-    <tr><td>待审核帖子列表对象B</td><td>待处理</td><td>中优先级</td><td>今天 08:45</td><td>处理</td></tr>
-    <tr><td>待审核帖子列表对象C</td><td>已完成</td><td>低优先级</td><td>昨天 18:10</td><td>记录</td></tr>
-  </tbody>
-</table>
-</section>
+  <a href="../内容管理/01-主题管理列表.html">主题管理</a>
+  <a href="../内容管理/02-帖子管理列表.html">帖子管理</a>
+  <a href="../内容管理/11-附件管理.html">附件管理</a>
+  <a href="../内容管理/08-回收站管理.html">回收站</a>
+  <a href="./01-待审核帖子列表.html">审核中心</a>
+  <a href="./06-举报列表.html">举报处理</a>
+  <a href="../内容管理/09-敏感词.html">敏感词</a></nav>
+  <div class="audit-subtabs">
+    <a class="is-active" href="./01-待审核帖子列表.html">审核主题</a>
+    <a href="./02-待审核主题列表.html">审核帖子</a>
+  </div>
+  <section class="audit-panel">
+    <div class="audit-filter-grid">
+      <div>用户名</div>
+      <div><input type="text"></div>
+      <div>标题包含</div>
+      <div><input type="text"></div>
+      <div></div>
+      <div>每页显示</div>
+      <div>
+        <select><option selected>20</option><option>50</option><option>100</option></select>
+        <label><input type="checkbox"> 显示过滤词</label>
+      </div>
+      <div>审核范围</div>
+      <div class="wide-actions">
+        <select><option selected>未审核</option><option>已审核</option><option>全部</option></select>
+        <select><option selected>所有帖子</option><option>论坛帖子</option><option>门户帖子</option></select>
+        <select><option selected>一周</option><option>一天</option><option>一月</option></select>
+        <button type="button">搜索</button>
+      </div>
+    </div>
+  </section>
+  <section class="audit-panel">
+    <p class="audit-link-row">全部展开 全部折叠</p>
+    <div class="audit-item">
+      <div class="audit-item-grid">
+        <div class="audit-radio-list">
+          <label><input type="radio" name="topic-action" checked> 通过</label>
+          <label><input type="radio" name="topic-action"> 删除</label>
+          <label><input type="radio" name="topic-action"> 忽略</label>
+        </div>
+        <div>
+          <div class="audit-title">赤色一组第二个帖子</div>
+          <div class="audit-meta">206.251.55.214 -- 美国</div>
+          <div class="audit-text">赤色一组第二个帖子内容</div>
+        </div>
+        <div class="audit-side">赤色一组</div>
+        <div class="audit-side">test01<br>2026-4-21 09:51</div>
+        <div class="audit-side"><a href="#">查看</a> <a href="#">编辑</a></div>
+      </div>
+      <div class="audit-item-footer">
+        <span class="audit-link-row">通过 | 删除 | 忽略 | 编辑主题</span>
+        <span>操作理由</span>
+        <input type="text" style="width: 140px">
+        <select style="width: 116px"><option selected>无</option></select>
+      </div>
+    </div>
+    <div class="audit-bottom">
+      <button type="button">提交</button>
+      <span class="audit-link-row">全部通过 全部删除 全部忽略 全部取消</span>
+      <label><input type="checkbox"> 将操作应用到其他所有页面</label>
+    </div>
+  </section>
 </body>
 </html>

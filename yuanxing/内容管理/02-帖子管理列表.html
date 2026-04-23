@@ -3,52 +3,271 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>帖子管理列表</title>
+  <title>论坛批量删帖</title>
   <link rel="stylesheet" href="../assets/theme.css">
   <script defer src="../assets/theme.js"></script>
+  <style>
+    .post-delete-step {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      margin: 2px 0 18px;
+    }
+
+    .post-delete-step strong {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 12px;
+    }
+
+    .post-delete-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .post-delete-card h2 {
+      font-size: 16px;
+      margin: 0;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .post-delete-tips {
+      margin: 0;
+      padding: 16px 24px 18px 38px;
+      color: #46566d;
+      line-height: 1.9;
+    }
+
+    .post-delete-form {
+      display: grid;
+      grid-template-columns: 180px minmax(280px, 1fr) 1.5fr;
+      gap: 18px 28px;
+      align-items: center;
+      padding: 18px 20px 20px;
+    }
+
+    .post-delete-form label {
+      font-weight: 700;
+    }
+
+    .post-delete-form input,
+    .post-delete-form select {
+      max-width: 260px;
+    }
+
+    .post-delete-date {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .post-delete-date input {
+      max-width: 130px;
+    }
+
+    .post-delete-note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .post-result-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 700;
+    }
+
+    .post-result-head a {
+      font-weight: 400;
+    }
+
+    .post-result-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .post-result-table th,
+    .post-result-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .post-result-table th {
+      background: transparent;
+      color: #26384d;
+      font-weight: 700;
+    }
+
+    .post-result-actions {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 16px 20px;
+    }
+
+    @media (max-width: 1100px) {
+      .post-delete-form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
   <p><a href="../index.html">返回目录</a></p>
-  <h1>帖子管理列表</h1>
-  <p>论坛管理员后台 &gt; 内容管理 &gt; 帖子管理列表</p>
+  <h1>论坛批量删帖</h1>
+  <p>论坛管理员后台 &gt; 内容治理 &gt; 帖子管理</p>
   <nav>
-  <a href="./01-主题管理列表.html">主题管理列表</a>
-  <a href="./02-帖子管理列表.html">帖子管理列表</a>
-  <a href="./03-主题详情与操作页.html">主题详情与操作页</a>
-  <a href="./04-帖子编辑页.html">帖子编辑页</a>
-  <a href="./05-移动主题页.html">移动主题页</a>
-  <a href="./06-合并主题页.html">合并主题页</a>
-  <a href="./07-拆分主题页.html">拆分主题页</a>
-  <a href="./08-回收站管理.html">回收站管理</a>
-</nav>
-  <form>
-  <fieldset>
-    <legend>筛选条件</legend>
-<p><label>关键词<br><input type="text" value="帖子管理列表名称 / 编号 / 用户名"></label></p>
-<p><label>状态<br><select><option selected>全部</option><option>正常</option><option>待处理</option><option>已完成</option><option>停用</option></select></label></p>
-<p><label>排序方式<br><select><option selected>最近更新</option><option>创建时间</option><option>优先级</option><option>风险等级</option></select></label></p>
-<p><label>所属范围<br><input type="text" value="内容管理 / 全站 / 指定板块"></label></p>
-  </fieldset>
-  <p><button>查询</button> <button type="button">重置</button> <button type="button">导出</button></p>
-</form>
-<section>
-  <h2>帖子管理列表数据</h2>
-  <table>
-  <thead><tr><th>对象</th><th>状态</th><th>优先级</th><th>更新时间</th><th>操作</th></tr></thead>
-  <tbody>
-    <tr><td>帖子管理列表对象A</td><td>处理中</td><td>高优先级</td><td>今天 09:30</td><td>查看</td></tr>
-    <tr><td>帖子管理列表对象B</td><td>待处理</td><td>中优先级</td><td>今天 08:45</td><td>处理</td></tr>
-    <tr><td>帖子管理列表对象C</td><td>已完成</td><td>低优先级</td><td>昨天 18:10</td><td>记录</td></tr>
-  </tbody>
-</table>
-</section>
-<section>
-  <h2>快捷动作</h2>
-  <ul>
-    <li>支持批量操作、导出、查看详情和进入处理页。</li>
-    <li>高风险项在列表中前置展示。</li>
-    <li>列表字段仅保留原型级核心信息，方便后续再细化。</li>
-  </ul>
-</section>
+    <a href="./01-主题管理列表.html">主题管理</a>
+    <a href="./02-帖子管理列表.html">帖子管理</a>
+  <a href="./11-附件管理.html">附件管理</a>
+    <a href="./08-回收站管理.html">回收站</a>
+    <a href="../审核与举报/01-待审核帖子列表.html">审核中心</a>
+    <a href="../审核与举报/06-举报列表.html">举报处理</a>
+    <a href="./09-敏感词.html">敏感词</a>  </nav>
+
+  <div class="post-delete-step">
+    <strong>1</strong>
+    <span>搜索符合条件的帖子</span>
+    <span>──────────</span>
+    <span>2　论坛批量删帖</span>
+  </div>
+
+  <section class="post-delete-card">
+    <h2>技巧提示</h2>
+    <ul class="post-delete-tips">
+      <li>批量删帖仅用于删除违规帖子使用，如需整理批量删除历史旧帖，请使用批量主题管理功能。</li>
+      <li>如果符合删除条件的帖子为主题第一帖，或该主题已关闭，将删除整个主题。</li>
+      <li>如果不是论坛管理员，您只能删除从上一时间段内的某个时间段内帖子。</li>
+      <li>版块版主删除的时间范围为一星期内；天：版主可删除当前一直到了天且距离发帖者的帖子。</li>
+    </ul>
+  </section>
+
+  <section class="post-delete-card">
+    <form class="post-delete-form">
+      <label>所在版块:</label>
+      <div><select><option selected>&gt; 请选择</option><option>赤色一组</option><option>第一个灵魂分区</option></select></div>
+      <div></div>
+
+      <label>每页显示数:</label>
+      <div><select><option selected>每页显示20个</option><option>每页显示50个</option><option>每页显示100个</option></select></div>
+      <div></div>
+
+      <label>发帖时间范围:</label>
+      <div class="post-delete-date"><input type="text" value="2026-4-14"><span>--</span><input type="text"></div>
+      <div class="post-delete-note">格式 yyyy-mm-dd，不限制请输入 0</div>
+
+      <label>发帖用户名:</label>
+      <div><input type="text"></div>
+      <div class="post-delete-note">多用户名中间请用半角逗号 "," 隔开</div>
+
+      <label>内容关键字:</label>
+      <div><input type="text"></div>
+      <div class="post-delete-note">多关键字中间请用半角逗号 "," 隔开，关键词可用限定符 {x}</div>
+
+      <div><button type="button">搜索</button></div>
+      <div></div>
+      <div></div>
+    </form>
+  </section>
+
+  <section class="post-delete-card">
+    <div class="post-result-head">
+      <span>符合条件的帖子 7</span>
+      <a href="#">重新搜索</a>
+    </div>
+    <table class="post-result-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>标题</th>
+          <th>内容</th>
+          <th>版块</th>
+          <th>作者</th>
+          <th>时间</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td><a href="#">(无标题)</a></td>
+          <td>回复赤色一组主题内容</td>
+          <td><a href="#">赤色一组</a></td>
+          <td><a href="#">test01</a></td>
+          <td>2026-4-21 09:46</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td><a href="#">(无标题)</a></td>
+          <td>回复赤色一组主题内容</td>
+          <td><a href="#">赤色一组</a></td>
+          <td><a href="#">test01</a></td>
+          <td>2026-4-21 09:53</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td><a href="#">(无标题)</a></td>
+          <td>***太坏了</td>
+          <td><a href="#">赤色一组</a></td>
+          <td><a href="#">test01</a></td>
+          <td>2026-4-21 10:37</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td><a href="#">灵魂分区的第一条帖子</a></td>
+          <td>抢占沙发</td>
+          <td><a href="#">第一个灵魂分区</a></td>
+          <td><a href="#">test01</a></td>
+          <td>2026-4-20 15:52</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td><a href="#">抢占沙发</a></td>
+          <td>开始抢占</td>
+          <td><a href="#">第二个灵魂分区</a></td>
+          <td><a href="#">test01</a></td>
+          <td>2026-4-20 16:13</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td><a href="#">第二次抢占</a></td>
+          <td>现在开始</td>
+          <td><a href="#">第二个灵魂分区</a></td>
+          <td><a href="#">test01</a></td>
+          <td>2026-4-20 16:15</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" checked></td>
+          <td><a href="#">赤色一组第三个帖子</a></td>
+          <td>赤色一组第三个帖子内容</td>
+          <td><a href="#">赤色一组</a></td>
+          <td><a href="#">test01</a></td>
+          <td>2026-4-20 09:51</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="post-result-actions">
+      <label><input type="checkbox" checked> 删?</label>
+      <button type="button">提交</button>
+      <label><input type="checkbox" checked> 删帖不减用户发帖数和积分</label>
+    </div>
+  </section>
 </body>
 </html>

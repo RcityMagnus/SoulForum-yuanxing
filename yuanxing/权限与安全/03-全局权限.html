@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>全局权限</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .permission-shell {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .permission-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      background: #4f7893;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 12px;
+    }
+
+    .permission-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+      border-top: 2px solid #f29b34;
+    }
+
+    .permission-table th,
+    .permission-table td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .permission-table th {
+      background: #f7fafc;
+      color: #27394d;
+      font-weight: 700;
+    }
+
+    .permission-table th:nth-child(2),
+    .permission-table th:nth-child(3),
+    .permission-table th:nth-child(4),
+    .permission-table th:nth-child(5),
+    .permission-table td:nth-child(2),
+    .permission-table td:nth-child(3),
+    .permission-table td:nth-child(4),
+    .permission-table td:nth-child(5) {
+      text-align: center;
+    }
+
+    .permission-table tbody tr:nth-child(odd) {
+      background: #f8fafc;
+    }
+
+    .permission-table tbody tr:nth-child(even) {
+      background: #eef3f6;
+    }
+
+    .permission-help {
+      color: #4f7893;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .advanced-box {
+      padding: 18px;
+      background: #f7fafc;
+    }
+
+    .advanced-fieldset {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 16px;
+    }
+
+    .advanced-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 28px;
+      align-items: center;
+    }
+
+    .advanced-grid select {
+      max-width: 280px;
+    }
+
+    .advanced-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 12px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>全局权限</h1>
+  <p>论坛管理员后台 &gt; 权限与安全 &gt; 全局权限</p>
+  <nav>
+    <a href="./01-用户组管理.html">编辑用户组</a>
+    <a href="./02-新增用户组.html">新增用户组</a>
+    <a href="./03-全局权限.html">全局权限</a>
+    <a href="./04-板块权限管理.html">板块权限管理</a>
+    <a href="./05-编辑权限文件.html">编辑权限文件</a>    <a href="./10-发帖时间段.html">发帖时间段</a>
+  </nav>
+
+  <section class="permission-shell">
+    <div class="permission-title">管理权限</div>
+    <table class="permission-table">
+      <thead>
+        <tr>
+          <th>名称</th>
+          <th>会员</th>
+          <th>权限</th>
+          <th>修改</th>
+          <th><input type="checkbox"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="permission-help">?</span> 游客</td>
+          <td>n/a</td>
+          <td>3</td>
+          <td><a href="#">修改</a></td>
+          <td><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td><span class="permission-help">?</span> 正式成员<br>继承的组: "A-VIP", "B-VIP", "C-VIP", "D-VIP", "DUV", "E-VIP", "F-VIP", "G-VIP", "Lv.1", "Lv.2", "Lv.3", "Lv.4", "Lv.5", "Lv.6", "Lv.7", "Lv.8", "Lv.9", "RainbowOG", "SuperOG", "Whitelist"</td>
+          <td>187890</td>
+          <td>40</td>
+          <td><a href="#">修改</a></td>
+          <td><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td><span class="permission-help">?</span> Administrator</td>
+          <td>9</td>
+          <td>(所有的)</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Global Moderator</td>
+          <td>15</td>
+          <td>51</td>
+          <td><a href="#">修改</a></td>
+          <td><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td><span class="permission-help">?</span> Moderator</td>
+          <td>n/a</td>
+          <td>26</td>
+          <td><a href="#">修改</a></td>
+          <td><input type="checkbox"></td>
+        </tr>
+        <tr>
+          <td>S-VIP</td>
+          <td>0</td>
+          <td>40</td>
+          <td><a href="#">修改</a></td>
+          <td><input type="checkbox"></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="permission-shell">
+    <div class="permission-title">高级选项</div>
+    <div class="advanced-box">
+      <fieldset class="advanced-fieldset">
+        <legend>选中项</legend>
+        <div class="advanced-grid">
+          <div><span class="permission-help">?</span> 应用预定义的权限集:</div>
+          <div><select><option selected>选择一个预定义的配置文件</option></select></div>
+          <div>设置权限集从此组:</div>
+          <div><select><option selected>选择会员组</option></select></div>
+          <div><select><option selected>添加权限...</option></select></div>
+          <div><select><option selected>选择权限</option></select></div>
+        </div>
+        <div class="advanced-actions">
+          <button type="button">设置权限</button>
+        </div>
+      </fieldset>
+    </div>
+  </section>
+</body>
+</html>

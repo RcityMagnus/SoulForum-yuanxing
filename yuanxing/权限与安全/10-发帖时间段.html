@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>发帖时间段</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .post-time-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .post-time-section {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 28px;
+      align-items: start;
+      padding: 22px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .post-time-section:first-of-type {
+      border-top: 0;
+      padding-top: 8px;
+    }
+
+    .post-time-label {
+      margin: 0 0 14px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .post-time-box {
+      width: 100%;
+      min-height: 112px;
+      resize: vertical;
+    }
+
+    .post-time-help {
+      color: var(--muted);
+      line-height: 1.85;
+      font-size: 15px;
+      white-space: pre-line;
+    }
+
+    @media (max-width: 980px) {
+      .post-time-section {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>发帖时间段</h1>
+  <p>论坛管理员后台 &gt; 权限与安全 &gt; 发帖时间段</p>
+  <nav>
+    <a href="./01-用户组管理.html">编辑用户组</a>
+    <a href="./02-新增用户组.html">新增用户组</a>
+    <a href="./03-全局权限.html">全局权限</a>
+    <a href="./04-板块权限管理.html">板块权限管理</a>
+    <a href="./05-编辑权限文件.html">编辑权限文件</a>    <a href="./10-发帖时间段.html">发帖时间段</a>
+  </nav>
+  <section>
+    <h2>发帖时间段限制</h2>
+    <div class="post-time-wrap">
+      <div class="post-time-section">
+        <div>
+          <p class="post-time-label">禁止发帖时间段:</p>
+          <textarea class="post-time-box"></textarea>
+        </div>
+        <div class="post-time-help">每天该时间段内用户不能发帖，请使用 24 小时时段格式，每个时间段一行，如需要也可跨越零点，留空为不限制。例如:
+每日晚 11:25 到次日早 5:05 可设置为: 23:25-5:05
+每日早 9:00 到当日下午 2:30 可设置为: 9:00-14:30
+注意: 格式不正确将可能导致意想不到的问题，用户组中如开启“不受时间段限制”的选项，则该组可不被任何时间段设置约束。所有时间段设置均以站点系统默认时区为准，不受用户自定义时区的影响
+双击输入框可扩大/缩小</div>
+      </div>
+      <div class="post-time-section">
+        <div>
+          <p class="post-time-label">发帖审核时间段:</p>
+          <textarea class="post-time-box">15:40-16:00</textarea>
+        </div>
+        <div class="post-time-help">每天该时间段内用户发帖不直接显示，需经版主或管理员人工审核才能发表，格式和用法同上
+双击输入框可扩大/缩小</div>
+      </div>
+      <div class="post-time-section">
+        <div>
+          <p class="post-time-label">用户发帖时间间隔(秒):</p>
+          <input type="text" value="15">
+        </div>
+        <div class="post-time-help">两次发帖间隔小于此时间，0 为不限制</div>
+      </div>
+      <div>
+        <button type="button">提交</button>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

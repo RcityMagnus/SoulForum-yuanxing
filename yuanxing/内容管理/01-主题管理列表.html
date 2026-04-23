@@ -3,52 +3,347 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>主题管理列表</title>
+  <title>论坛主题管理</title>
   <link rel="stylesheet" href="../assets/theme.css">
   <script defer src="../assets/theme.js"></script>
+  <style>
+    .topic-subtabs {
+      display: flex;
+      gap: 28px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 18px;
+    }
+
+    .topic-subtab {
+      padding: 10px 2px 14px;
+      color: #24364d;
+      border-bottom: 3px solid transparent;
+    }
+
+    .topic-subtab.is-active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .topic-panel {
+      display: none;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .topic-panel.is-active {
+      display: block;
+    }
+
+    .topic-panel-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .topic-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .topic-table th,
+    .topic-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .topic-table th {
+      background: transparent;
+      color: #26384d;
+      font-weight: 700;
+    }
+
+    .topic-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .topic-list-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .topic-actions-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .topic-actions-table th,
+    .topic-actions-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .topic-inline {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .topic-inline select {
+      width: 180px;
+    }
+
+    .topic-bottom-submit {
+      margin-top: 16px;
+    }
+
+    .topic-search-step {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+      margin: 0 0 18px;
+    }
+
+    .topic-search-step strong {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 12px;
+    }
+
+    .topic-tip-list {
+      margin: 0;
+      padding-left: 22px;
+      color: #46566d;
+      line-height: 1.9;
+    }
+
+    .topic-search-grid {
+      display: grid;
+      grid-template-columns: 180px minmax(240px, 1fr) 1fr;
+      gap: 18px 26px;
+      align-items: center;
+    }
+
+    .topic-date-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topic-date-row input {
+      max-width: 120px;
+    }
+
+    .topic-note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1100px) {
+      .topic-search-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <script defer>
+    document.addEventListener("DOMContentLoaded", () => {
+      const tabs = Array.from(document.querySelectorAll("[data-topic-tab]"));
+      const panels = Array.from(document.querySelectorAll("[data-topic-panel]"));
+
+      function activate(name) {
+        tabs.forEach((tab) => {
+          tab.classList.toggle("is-active", tab.dataset.topicTab === name);
+        });
+        panels.forEach((panel) => {
+          panel.classList.toggle("is-active", panel.dataset.topicPanel === name);
+        });
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", (event) => {
+          event.preventDefault();
+          activate(tab.dataset.topicTab);
+        });
+      });
+
+      activate("latest");
+    });
+  </script>
 </head>
 <body>
   <p><a href="../index.html">返回目录</a></p>
-  <h1>主题管理列表</h1>
-  <p>论坛管理员后台 &gt; 内容管理 &gt; 主题管理列表</p>
+  <h1>论坛主题管理</h1>
+  <p>论坛管理员后台 &gt; 内容治理 &gt; 主题管理</p>
   <nav>
-  <a href="./01-主题管理列表.html">主题管理列表</a>
-  <a href="./02-帖子管理列表.html">帖子管理列表</a>
-  <a href="./03-主题详情与操作页.html">主题详情与操作页</a>
-  <a href="./04-帖子编辑页.html">帖子编辑页</a>
-  <a href="./05-移动主题页.html">移动主题页</a>
-  <a href="./06-合并主题页.html">合并主题页</a>
-  <a href="./07-拆分主题页.html">拆分主题页</a>
-  <a href="./08-回收站管理.html">回收站管理</a>
-</nav>
-  <form>
-  <fieldset>
-    <legend>筛选条件</legend>
-<p><label>关键词<br><input type="text" value="主题管理列表名称 / 编号 / 用户名"></label></p>
-<p><label>状态<br><select><option selected>全部</option><option>正常</option><option>待处理</option><option>已完成</option><option>停用</option></select></label></p>
-<p><label>排序方式<br><select><option selected>最近更新</option><option>创建时间</option><option>优先级</option><option>风险等级</option></select></label></p>
-<p><label>所属范围<br><input type="text" value="内容管理 / 全站 / 指定板块"></label></p>
-  </fieldset>
-  <p><button>查询</button> <button type="button">重置</button> <button type="button">导出</button></p>
-</form>
-<section>
-  <h2>主题管理列表数据</h2>
-  <table>
-  <thead><tr><th>对象</th><th>状态</th><th>优先级</th><th>更新时间</th><th>操作</th></tr></thead>
-  <tbody>
-    <tr><td>主题管理列表对象A</td><td>处理中</td><td>高优先级</td><td>今天 09:30</td><td>查看</td></tr>
-    <tr><td>主题管理列表对象B</td><td>待处理</td><td>中优先级</td><td>今天 08:45</td><td>处理</td></tr>
-    <tr><td>主题管理列表对象C</td><td>已完成</td><td>低优先级</td><td>昨天 18:10</td><td>记录</td></tr>
-  </tbody>
-</table>
-</section>
-<section>
-  <h2>快捷动作</h2>
-  <ul>
-    <li>支持批量操作、导出、查看详情和进入处理页。</li>
-    <li>高风险项在列表中前置展示。</li>
-    <li>列表字段仅保留原型级核心信息，方便后续再细化。</li>
-  </ul>
-</section>
+  <a href="./01-主题管理列表.html">主题管理</a>
+  <a href="./02-帖子管理列表.html">帖子管理</a>
+  <a href="./11-附件管理.html">附件管理</a>
+  <a href="./08-回收站管理.html">回收站</a>
+  <a href="../审核与举报/01-待审核帖子列表.html">审核中心</a>
+  <a href="../审核与举报/06-举报列表.html">举报处理</a>
+  <a href="./09-敏感词.html">敏感词</a></nav>
+
+  <div class="topic-subtabs">
+    <a class="topic-subtab" href="#" data-topic-tab="latest">最新列表</a>
+    <a class="topic-subtab" href="#" data-topic-tab="search">搜索</a>
+  </div>
+
+  <section class="topic-panel" data-topic-panel="latest">
+    <div class="topic-list-head">
+      <strong>新主题数 2</strong>
+    </div>
+    <table class="topic-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>标题</th>
+          <th>版块</th>
+          <th>作者</th>
+          <th>回复</th>
+          <th>浏览</th>
+          <th>最后发表</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><a href="#">灵魂分区的第一条帖子</a></td>
+          <td><a href="#">第一个灵魂分区</a></td>
+          <td>test01</td>
+          <td>0</td>
+          <td>3</td>
+          <td>2026-4-20 15:52</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><a href="#">赤色一组主题</a></td>
+          <td><a href="#">赤色一组</a></td>
+          <td>admin</td>
+          <td>1</td>
+          <td>4</td>
+          <td>2026-4-21 10:37</td>
+        </tr>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td colspan="6">全选</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="topic-panel" data-topic-panel="latest">
+    <div class="topic-panel-title">操作</div>
+    <table class="topic-actions-table">
+      <thead>
+        <tr><th></th><th>操作</th><th>选项</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="radio" name="topic-batch"></td>
+          <td>批量移动到版块</td>
+          <td>
+            <div class="topic-inline">
+              <select><option selected>赤色</option><option>第一个灵魂分区</option></select>
+              <span>分类</span>
+              <select><option selected></option><option>默认分类</option></select>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td><input type="radio" name="topic-batch"></td>
+          <td>批量置顶</td>
+          <td>
+            <label><input type="radio" name="top-type"> 解除</label>
+            <label><input type="radio" name="top-type"> 置顶I</label>
+            <label><input type="radio" name="top-type"> 置顶II</label>
+            <label><input type="radio" name="top-type"> 置顶III</label>
+          </td>
+        </tr>
+        <tr>
+          <td><input type="radio" name="topic-batch"></td>
+          <td>批量打开关闭</td>
+          <td>
+            <label><input type="radio" name="open-type"> 打开</label>
+            <label><input type="radio" name="open-type"> 关闭</label>
+          </td>
+        </tr>
+        <tr>
+          <td><input type="radio" name="topic-batch"></td>
+          <td>批量删除</td>
+          <td><label><input type="checkbox"> 删帖不减用户发帖数和积分</label></td>
+        </tr>
+        <tr>
+          <td><input type="radio" name="topic-batch"></td>
+          <td>删除主题中的附件</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="topic-bottom-submit">
+      <button type="button">提交</button>
+    </div>
+  </section>
+
+  <section class="topic-panel" data-topic-panel="search">
+    <div class="topic-search-step">
+      <strong>1</strong>
+      <span>搜索符合条件主题</span>
+      <span>──────────</span>
+      <span>2　论坛主题管理</span>
+    </div>
+  </section>
+
+  <section class="topic-panel" data-topic-panel="search">
+    <form class="topic-search-grid">
+      <div>所在版块:</div>
+      <div>
+        <select><option selected>&gt; 全部</option></select>
+      </div>
+      <div>
+        <span>分类</span>
+        <select><option selected></option></select>
+      </div>
+
+      <div>每页显示数:</div>
+      <div><select><option selected>每页显示20个</option></select></div>
+      <div></div>
+
+      <div>发帖时间范围:</div>
+      <div class="topic-date-row"><input type="text" value="2026-3-22"><span>--</span><input type="text"></div>
+      <div class="topic-note">格式 yyyy-mm-dd，不限制请输入 0</div>
+
+      <div>主题作者:</div>
+      <div><input type="text"></div>
+      <div class="topic-note">多用户名中间请用半角逗号 "," 隔开</div>
+
+      <div>标题关键字:</div>
+      <div><input type="text"></div>
+      <div class="topic-note">多关键字中间请用半角逗号 "," 隔开</div>
+
+      <div><button type="button">提交</button></div>
+      <div></div>
+      <div></div>
+    </form>
+  </section>
 </body>
 </html>

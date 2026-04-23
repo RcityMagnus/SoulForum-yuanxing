@@ -6,49 +6,256 @@
   <title>会员搜索</title>
   <link rel="stylesheet" href="../assets/theme.css">
   <script defer src="../assets/theme.js"></script>
+  <style>
+    .member-search-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .member-search-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 70px;
+      padding: 14px 18px;
+      background: #f7fafc;
+    }
+
+    .member-search-row {
+      display: grid;
+      grid-template-columns: 140px 46px 140px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .member-search-row.compact {
+      grid-template-columns: 140px 140px;
+    }
+
+    .member-search-row label {
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .member-search-row input,
+    .member-search-row select {
+      width: 100%;
+      max-width: 140px;
+    }
+
+    .member-search-date {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .member-search-date input {
+      max-width: 94px;
+    }
+
+    .member-groups-table {
+      grid-column: 1 / -1;
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .member-groups-table th,
+    .member-groups-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .member-groups-table th {
+      background: #f7fafc;
+      color: #27394d;
+      font-weight: 700;
+    }
+
+    .member-groups-table th:nth-child(2),
+    .member-groups-table td:nth-child(2) {
+      text-align: center;
+    }
+
+    .member-groups-table tbody tr:nth-child(odd) {
+      background: #eef3f6;
+    }
+
+    .member-groups-table tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .member-search-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 12px;
+      padding: 12px 18px;
+    }
+
+    .member-result-pages {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 2px solid #f29b34;
+      color: #354b61;
+    }
+
+    .member-result-pages a {
+      font-weight: 700;
+    }
+
+    .member-result-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .member-result-table th,
+    .member-result-table td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .member-result-table th {
+      background: #f6f8fa;
+      color: #27394d;
+      font-weight: 700;
+    }
+
+    .member-result-table tbody tr:nth-child(odd) {
+      background: #eef3f6;
+    }
+
+    .member-result-table tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    @media (max-width: 1200px) {
+      .member-search-form {
+        grid-template-columns: 1fr;
+      }
+
+    }
+  </style>
 </head>
 <body>
   <p><a href="../index.html">返回目录</a></p>
   <h1>会员搜索</h1>
-  <p>论坛管理员后台 &gt; 会员管理 &gt; 会员搜索</p>
+  <p>论坛管理员后台 &gt; 会员治理 &gt; 会员搜索</p>
   <nav>
-  <a href="./01-会员列表.html">会员列表</a>
-  <a href="./02-会员搜索.html">会员搜索</a>
-  <a href="./03-会员详情页.html">会员详情页</a>
-  <a href="./04-编辑会员资料.html">编辑会员资料</a>
-  <a href="./05-用户组调整页.html">用户组调整页</a>
-  <a href="./06-重置密码页.html">重置密码页</a>
-  <a href="./07-会员发帖记录.html">会员发帖记录</a>
-  <a href="./08-会员登录日志.html">会员登录日志</a>
-</nav>
-  <form>
-  <fieldset>
-    <legend>筛选条件</legend>
-<p><label>关键词<br><input type="text" value="会员搜索名称 / 编号 / 用户名"></label></p>
-<p><label>状态<br><select><option selected>全部</option><option>正常</option><option>待处理</option><option>已完成</option><option>停用</option></select></label></p>
-<p><label>排序方式<br><select><option selected>最近更新</option><option>创建时间</option><option>优先级</option><option>风险等级</option></select></label></p>
-<p><label>所属范围<br><input type="text" value="会员管理 / 全站 / 指定板块"></label></p>
-  </fieldset>
-  <p><button>查询</button> <button type="button">重置</button> <button type="button">导出</button></p>
-</form>
-<section>
-  <h2>会员搜索数据</h2>
-  <table>
-  <thead><tr><th>名称</th><th>分组</th><th>状态</th><th>最近活动</th><th>操作</th></tr></thead>
-  <tbody>
-    <tr><td>会员A</td><td>普通会员</td><td>正常</td><td>今天 09:20</td><td>查看</td></tr>
-    <tr><td>会员B</td><td>资深会员</td><td>禁言中</td><td>今天 08:15</td><td>处理</td></tr>
-    <tr><td>会员C</td><td>新会员</td><td>待验证</td><td>昨天 21:40</td><td>查看</td></tr>
-  </tbody>
-</table>
-</section>
-<section>
-  <h2>快捷动作</h2>
-  <ul>
-    <li>支持批量操作、导出、查看详情和进入处理页。</li>
-    <li>高风险项在列表中前置展示。</li>
-    <li>列表字段仅保留原型级核心信息，方便后续再细化。</li>
-  </ul>
-</section>
+    <a href="./01-会员列表.html">会员列表</a>
+    <a href="./02-会员搜索.html">会员搜索</a>
+    <a href="./04-编辑会员资料.html">编辑会员资料</a>
+    <a href="./05-用户组调整页.html">用户组调整页</a>
+    <a href="./06-重置密码页.html">重置密码页</a>
+    <a href="./07-会员发帖记录.html">会员发帖记录</a>
+    <a href="./08-会员登录日志.html">会员登录日志</a>
+  </nav>
+
+  <section class="member-search-card">
+    <form class="member-search-form">
+      <div class="member-search-row">
+        <label>ID:</label>
+        <select><option selected>=</option><option>&gt;</option><option>&lt;</option></select>
+        <input type="text">
+      </div>
+      <div class="member-search-row compact">
+        <label>用户名:</label>
+        <input type="text">
+      </div>
+
+      <div class="member-search-row compact">
+        <label>邮箱地址:</label>
+        <input type="text">
+      </div>
+
+      <div class="member-search-row">
+        <label>发帖数:</label>
+        <select><option selected>=</option><option>&gt;</option><option>&lt;</option></select>
+        <input type="text">
+      </div>
+
+      <div class="member-search-row">
+        <label>注册日期:</label>
+        <select><option selected>=</option><option>&gt;</option><option>&lt;</option></select>
+        <div class="member-search-date"><input type="text" placeholder="年/月/日"><input type="date"></div>
+      </div>
+      <div class="member-search-row compact">
+        <label>IP 地址:</label>
+        <input type="text">
+      </div>
+
+      <div class="member-search-row">
+        <label>最后在线:</label>
+        <select><option selected>=</option><option>&gt;</option><option>&lt;</option></select>
+        <div class="member-search-date"><input type="text" placeholder="年/月/日"><input type="date"></div>
+      </div>
+
+      <table class="member-groups-table">
+        <thead>
+          <tr>
+            <th>用户组</th>
+            <th><input type="checkbox" checked> select</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Regular Members</td><td><input type="checkbox" checked></td></tr>
+          <tr><td>Administrator</td><td><input type="checkbox" checked></td></tr>
+          <tr><td>Global Moderator</td><td><input type="checkbox" checked></td></tr>
+        </tbody>
+      </table>
+
+      <div class="member-search-actions">
+        <button type="button">搜索</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="member-search-card">
+    <div class="member-result-pages">
+      <span>Pages:</span>
+      <a href="#">[1]</a>
+    <a href="#">2</a>
+      <span>3 ... 6311</span>
+      <a href="#">◆</a>
+    </div>
+
+    <table class="member-result-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>用户名</th>
+          <th>显示名称</th>
+          <th>邮箱地址</th>
+          <th>IP 地址</th>
+          <th>最后在线</th>
+          <th>发帖数</th>
+          <th><input type="checkbox"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>529</td><td>48291736</td><td>mavilo</td><td>48291736@example.com</td><td>127.0.0.1</td><td>Never</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>416</td><td>73018462</td><td>caldera</td><td>73018462@example.com</td><td>127.0.0.1</td><td>Never</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>645</td><td>194827365</td><td>norvik</td><td>194827365@example.com</td><td>119.102.80.47</td><td>168 days ago</td><td>35</td><td><input type="checkbox"></td></tr>
+        <tr><td>7315</td><td>82736491</td><td>loremia</td><td>82736491@example.com</td><td>127.0.0.1</td><td>Never</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>767</td><td>563819274</td><td>briston</td><td>563819274@example.com</td><td>127.0.0.1</td><td>Never</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>601</td><td>91827364</td><td>avendra</td><td>91827364@example.com</td><td>117.0.11.32</td><td>16 days ago</td><td>195</td><td><input type="checkbox"></td></tr>
+        <tr><td>565</td><td>73915286</td><td>kivaro</td><td>73915286@example.com</td><td>127.0.0.1</td><td>Never</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>64749</td><td>2846197350</td><td>seralin</td><td>2846197350@example.com</td><td>127.0.0.1</td><td>Never</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>470</td><td>67392841</td><td>torvik</td><td>67392841@example.com</td><td>114.4.198.15</td><td>30 days ago</td><td>3</td><td><input type="checkbox"></td></tr>
+        <tr><td>919</td><td>10593847</td><td>nexora</td><td>10593847@example.com</td><td>43.24.153.228</td><td>600 days ago</td><td>3</td><td><input type="checkbox"></td></tr>
+      </tbody>
+    </table>
+  </section>
 </body>
 </html>

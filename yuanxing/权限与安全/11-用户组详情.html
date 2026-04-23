@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>用户组详情</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .member-group-detail {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .member-group-section-title {
+      background: #4f7893;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 12px;
+    }
+
+    .member-pages {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 2px solid #f29b34;
+    }
+
+    .member-pages a {
+      font-weight: 700;
+    }
+
+    .group-members-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .group-members-table th,
+    .group-members-table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .group-members-table th {
+      background: #f7fafc;
+      color: #27394d;
+      font-weight: 700;
+    }
+
+    .group-members-table tbody tr:nth-child(odd) {
+      background: #f8fafc;
+    }
+
+    .group-members-table tbody tr:nth-child(even) {
+      background: #eef3f6;
+    }
+
+    .group-members-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 10px 12px;
+    }
+
+    .group-inline-form {
+      display: grid;
+      grid-template-columns: 220px 180px 1fr;
+      gap: 18px;
+      align-items: center;
+      padding: 18px 20px;
+      background: #f7fafc;
+    }
+
+    .group-inline-form label {
+      font-weight: 700;
+    }
+
+    .group-inline-form button {
+      justify-self: end;
+    }
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>用户组详情</h1>
+  <p>论坛管理员后台 &gt; 权限与安全 &gt; 编辑用户组 &gt; 用户组详情</p>
+  <nav>
+    <a href="./01-用户组管理.html">编辑用户组</a>
+    <a href="./02-新增用户组.html">新增用户组</a>
+    <a href="./03-全局权限.html">全局权限</a>
+    <a href="./04-板块权限管理.html">板块权限管理</a>
+    <a href="./05-编辑权限文件.html">编辑权限文件</a>    <a href="./10-发帖时间段.html">发帖时间段</a>
+  </nav>
+
+  <section class="member-group-detail">
+    <div class="member-group-section-title">用户组：Administrator（9）</div>
+    <div class="member-pages">
+      <span>Pages:</span>
+      <a href="#">[1]</a>
+    </div>
+    <table class="group-members-table">
+      <thead>
+        <tr>
+          <th>用户名</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Last Active</th>
+          <th>Date registered</th>
+          <th>Posts</th>
+          <th><input type="checkbox"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>CY</td><td>CY</td><td>cy.firedao@gmail.com</td><td>Jul 27, 2025 03:36 PM</td><td>Apr 24, 2024 10:08 AM</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>Eva</td><td>Eva</td><td>75603996@qq.com</td><td>Apr 21, 2026 02:40 PM</td><td>Apr 23, 2024 04:03 PM</td><td>200</td><td><input type="checkbox"></td></tr>
+        <tr><td>FireKun</td><td>FireKun</td><td>rainbowcitykun@gmail.com</td><td>Apr 14, 2026 04:41 PM</td><td>Apr 11, 2024 04:51 PM</td><td>64</td><td><input type="checkbox"></td></tr>
+        <tr><td>manticore</td><td>manticore</td><td>huyingfang666@gmail.com</td><td>Today at 10:50 AM</td><td>May 09, 2024 02:45 PM</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>Sara</td><td>Sara</td><td>vinsla6@gmail.com</td><td>May 21, 2024 05:18 PM</td><td>Apr 23, 2024 03:59 PM</td><td>56</td><td><input type="checkbox"></td></tr>
+        <tr><td>test</td><td>test</td><td></td><td>Jul 24, 2025 09:23 AM</td><td>Jun 22, 2024 01:35 PM</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>YOKO</td><td>YOKO</td><td>mirabellasibert987@gmail.com</td><td>Today at 08:44 AM</td><td>Apr 23, 2024 09:33 PM</td><td>833</td><td><input type="checkbox"></td></tr>
+        <tr><td>坤元</td><td>坤元</td><td>kun@fdao.club</td><td>Never</td><td>Apr 11, 2024 04:53 PM</td><td>0</td><td><input type="checkbox"></td></tr>
+        <tr><td>FireFang</td><td>放州</td><td>firefangj20@gmail.com</td><td>Mar 09, 2026 04:51 PM</td><td>Apr 03, 2024 03:11 PM</td><td>1</td><td><input type="checkbox"></td></tr>
+      </tbody>
+    </table>
+    <div class="group-members-actions">
+      <button type="button">移除</button>
+    </div>
+  </section>
+
+  <section class="member-group-detail">
+    <div class="member-group-section-title">在此群组中添加用户</div>
+    <form class="group-inline-form">
+      <label>要添加的用户名称</label>
+      <input type="text">
+      <button type="button">添加</button>
+    </form>
+  </section>
+
+  <section class="member-group-detail">
+    <div class="member-group-section-title">在此群组中移除用户</div>
+    <form class="group-inline-form">
+      <label>要移除的会员名称</label>
+      <input type="text">
+      <button type="button">移除</button>
+    </form>
+  </section>
+</body>
+</html>

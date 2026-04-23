@@ -3,52 +3,424 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>回收站管理</title>
+  <title>回收站</title>
   <link rel="stylesheet" href="../assets/theme.css">
   <script defer src="../assets/theme.js"></script>
+  <style>
+    .recycle-main-tabs,
+    .recycle-subtabs {
+      display: flex;
+      gap: 28px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 18px;
+    }
+
+    .recycle-main-tab,
+    .recycle-subtab {
+      padding: 10px 2px 14px;
+      color: #24364d;
+      border-bottom: 3px solid transparent;
+    }
+
+    .recycle-main-tab.is-active,
+    .recycle-subtab.is-active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .recycle-scope {
+      display: none;
+    }
+
+    .recycle-scope.is-active {
+      display: block;
+    }
+
+    .recycle-panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .recycle-head {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 8px;
+    }
+
+    .recycle-head strong {
+      font-size: 16px;
+    }
+
+    .recycle-table table {
+      border: 0;
+      border-radius: 0;
+    }
+
+    .recycle-table th,
+    .recycle-table td {
+      padding: 12px 10px;
+    }
+
+    .recycle-table th {
+      background: transparent;
+      color: #26384d;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .recycle-table tr.selected td {
+      background: #eef6ff;
+    }
+
+    .reply-list-item {
+      display: grid;
+      grid-template-columns: 90px minmax(0, 1fr);
+      gap: 18px;
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .reply-list-item:first-of-type {
+      border-top: 0;
+    }
+
+    .reply-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-top: 4px;
+    }
+
+    .reply-main a {
+      color: var(--primary);
+    }
+
+    .reply-main strong {
+      display: inline-block;
+      margin-right: 10px;
+    }
+
+    .reply-plain {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #edf2f7;
+      color: #3f4f66;
+    }
+
+    .recycle-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .recycle-bulk {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-top: 14px;
+    }
+
+    .recycle-search-grid {
+      display: grid;
+      grid-template-columns: 180px minmax(220px, 1fr) 1fr;
+      gap: 18px 24px;
+      align-items: center;
+    }
+
+    .recycle-inline-note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .recycle-date-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .recycle-date-row input {
+      max-width: 120px;
+    }
+
+    .recycle-clean-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    [data-recycle-panel] {
+      display: none;
+    }
+
+    [data-recycle-panel].is-active {
+      display: block;
+    }
+
+    @media (max-width: 1100px) {
+      .recycle-search-grid,
+      .recycle-clean-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <script defer>
+    document.addEventListener("DOMContentLoaded", () => {
+      const mainTabs = Array.from(document.querySelectorAll("[data-recycle-scope-tab]"));
+      const scopes = Array.from(document.querySelectorAll("[data-recycle-scope]"));
+
+      function activateScope(scopeName) {
+        mainTabs.forEach((tab) => {
+          tab.classList.toggle("is-active", tab.dataset.recycleScopeTab === scopeName);
+        });
+        scopes.forEach((scope) => {
+          scope.classList.toggle("is-active", scope.dataset.recycleScope === scopeName);
+        });
+        activatePanel(scopeName, "list");
+      }
+
+      function activatePanel(scopeName, panelName) {
+        const scope = document.querySelector(`[data-recycle-scope="${scopeName}"]`);
+        if (!scope) return;
+        const tabs = Array.from(scope.querySelectorAll("[data-recycle-tab]"));
+        const panels = Array.from(scope.querySelectorAll("[data-recycle-panel]"));
+        tabs.forEach((tab) => {
+          tab.classList.toggle("is-active", tab.dataset.recycleTab === panelName);
+        });
+        panels.forEach((panel) => {
+          panel.classList.toggle("is-active", panel.dataset.recyclePanel === panelName);
+        });
+      }
+
+      mainTabs.forEach((tab) => {
+        tab.addEventListener("click", (event) => {
+          event.preventDefault();
+          activateScope(tab.dataset.recycleScopeTab);
+        });
+      });
+
+      document.querySelectorAll("[data-recycle-scope]").forEach((scope) => {
+        const scopeName = scope.dataset.recycleScope;
+        scope.querySelectorAll("[data-recycle-tab]").forEach((tab) => {
+          tab.addEventListener("click", (event) => {
+            event.preventDefault();
+            activatePanel(scopeName, tab.dataset.recycleTab);
+          });
+        });
+      });
+
+      activateScope("topic");
+    });
+  </script>
 </head>
 <body>
   <p><a href="../index.html">返回目录</a></p>
-  <h1>回收站管理</h1>
-  <p>论坛管理员后台 &gt; 内容管理 &gt; 回收站管理</p>
+  <h1>回收站</h1>
+  <p>论坛管理员后台 &gt; 内容治理 &gt; 回收站</p>
   <nav>
-  <a href="./01-主题管理列表.html">主题管理列表</a>
-  <a href="./02-帖子管理列表.html">帖子管理列表</a>
-  <a href="./03-主题详情与操作页.html">主题详情与操作页</a>
-  <a href="./04-帖子编辑页.html">帖子编辑页</a>
-  <a href="./05-移动主题页.html">移动主题页</a>
-  <a href="./06-合并主题页.html">合并主题页</a>
-  <a href="./07-拆分主题页.html">拆分主题页</a>
-  <a href="./08-回收站管理.html">回收站管理</a>
-</nav>
-  <form>
-  <fieldset>
-    <legend>筛选条件</legend>
-<p><label>关键词<br><input type="text" value="回收站管理名称 / 编号 / 用户名"></label></p>
-<p><label>状态<br><select><option selected>全部</option><option>正常</option><option>待处理</option><option>已完成</option><option>停用</option></select></label></p>
-<p><label>排序方式<br><select><option selected>最近更新</option><option>创建时间</option><option>优先级</option><option>风险等级</option></select></label></p>
-<p><label>所属范围<br><input type="text" value="内容管理 / 全站 / 指定板块"></label></p>
-  </fieldset>
-  <p><button>查询</button> <button type="button">重置</button> <button type="button">导出</button></p>
-</form>
-<section>
-  <h2>回收站管理数据</h2>
-  <table>
-  <thead><tr><th>对象</th><th>状态</th><th>优先级</th><th>更新时间</th><th>操作</th></tr></thead>
-  <tbody>
-    <tr><td>回收站管理对象A</td><td>处理中</td><td>高优先级</td><td>今天 09:30</td><td>查看</td></tr>
-    <tr><td>回收站管理对象B</td><td>待处理</td><td>中优先级</td><td>今天 08:45</td><td>处理</td></tr>
-    <tr><td>回收站管理对象C</td><td>已完成</td><td>低优先级</td><td>昨天 18:10</td><td>记录</td></tr>
-  </tbody>
-</table>
-</section>
-<section>
-  <h2>快捷动作</h2>
-  <ul>
-    <li>支持批量操作、导出、查看详情和进入处理页。</li>
-    <li>高风险项在列表中前置展示。</li>
-    <li>列表字段仅保留原型级核心信息，方便后续再细化。</li>
-  </ul>
-</section>
+  <a href="./01-主题管理列表.html">主题管理</a>
+  <a href="./02-帖子管理列表.html">帖子管理</a>
+  <a href="./11-附件管理.html">附件管理</a>
+  <a href="./08-回收站管理.html">回收站</a>
+  <a href="../审核与举报/01-待审核帖子列表.html">审核中心</a>
+  <a href="../审核与举报/06-举报列表.html">举报处理</a>
+  <a href="./09-敏感词.html">敏感词</a></nav>
+  <div class="recycle-main-tabs">
+    <a class="recycle-main-tab" href="#" data-recycle-scope-tab="topic">主题回收站</a>
+    <a class="recycle-main-tab" href="#" data-recycle-scope-tab="reply">回帖回收站</a>
+  </div>
+
+  <div class="recycle-scope is-active" data-recycle-scope="topic">
+  <div class="recycle-subtabs">
+    <a class="recycle-subtab" href="#" data-recycle-tab="list">主题列表</a>
+    <a class="recycle-subtab" href="#" data-recycle-tab="search">搜索</a>
+    <a class="recycle-subtab" href="#" data-recycle-tab="clean">清理</a>
+  </div>
+
+  <section class="recycle-panel is-active" data-recycle-panel="list">
+    <div class="recycle-head">
+      <strong>主题列表</strong>
+      <select><option selected>每页显示20个</option><option>每页显示50个</option></select>
+    </div>
+    <div class="recycle-table">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>主题</th>
+            <th>版块</th>
+            <th>作者</th>
+            <th>回复 / 查看</th>
+            <th>最后回复</th>
+            <th>操作人</th>
+            <th>原因</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="selected">
+            <td><input type="checkbox"></td>
+            <td><a href="#">第二次抢占</a></td>
+            <td><a href="#">第二个灵魂分区</a></td>
+            <td>test01<div class="recycle-meta">2026-4-20</div></td>
+            <td>0 / 1</td>
+            <td>test01<div class="recycle-meta">2026-4-20</div></td>
+            <td>admin<div class="recycle-meta">2026-4-21</div></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox"></td>
+            <td><a href="#">抢占沙发</a></td>
+            <td><a href="#">第二个灵魂分区</a></td>
+            <td>test01<div class="recycle-meta">2026-4-20</div></td>
+            <td>0 / 2</td>
+            <td>test01<div class="recycle-meta">2026-4-20</div></td>
+            <td>admin<div class="recycle-meta">2026-4-21</div></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="recycle-bulk">
+      <label><input type="checkbox"> 全选</label>
+      <button type="button">删除主题</button>
+      <button type="button">恢复主题</button>
+    </div>
+  </section>
+
+  <section class="recycle-panel" data-recycle-panel="search">
+    <div class="recycle-head">
+      <strong>搜索符合条件的被删帖子</strong>
+    </div>
+    <form class="recycle-search-grid">
+      <div>所在版块:</div>
+      <div><select><option selected>&gt; 请选择</option></select></div>
+      <div></div>
+
+      <div>原帖作者:</div>
+      <div><input type="text"></div>
+      <div class="recycle-inline-note">多个用户名间请用半角逗号 "," 隔开</div>
+
+      <div>标题关键字:</div>
+      <div><input type="text"></div>
+      <div class="recycle-inline-note">多关键字中间请用半角逗号 "," 隔开</div>
+
+      <div>删帖管理员:</div>
+      <div><input type="text"></div>
+      <div class="recycle-inline-note">多个用户名间请用半角逗号 "," 隔开</div>
+
+      <div>帖子发表时间范围:</div>
+      <div class="recycle-date-row"><input type="text"><span>--</span><input type="text"></div>
+      <div class="recycle-inline-note">格式 yyyy-mm-dd，不限制请留空</div>
+
+      <div>删帖时间范围:</div>
+      <div class="recycle-date-row"><input type="text"><span>--</span><input type="text"></div>
+      <div class="recycle-inline-note">格式 yyyy-mm-dd，不限制请留空</div>
+
+      <div><button type="button">提交</button></div>
+      <div></div>
+      <div></div>
+    </form>
+  </section>
+
+  <section class="recycle-panel" data-recycle-panel="clean">
+    <div class="recycle-head">
+      <strong>批量清空回收站</strong>
+    </div>
+    <form class="recycle-clean-grid">
+      <div>
+        <div style="margin-bottom: 12px; font-weight: 600;">清空多少天以前的回收站帖子:</div>
+        <input type="text" value="30">
+      </div>
+      <div class="recycle-inline-note">0 为清空全部</div>
+      <div><button type="button">提交</button></div>
+      <div></div>
+    </form>
+  </section>
+  </div>
+
+  <div class="recycle-scope" data-recycle-scope="reply">
+  <div class="recycle-subtabs">
+    <a class="recycle-subtab" href="#" data-recycle-tab="list">回帖列表</a>
+    <a class="recycle-subtab" href="#" data-recycle-tab="search">搜索</a>
+    <a class="recycle-subtab" href="#" data-recycle-tab="clean">清理</a>
+  </div>
+
+  <section class="recycle-panel is-active" data-recycle-panel="list">
+    <div class="recycle-head">
+      <strong>回帖列表</strong>
+      <select><option selected>每页显示20个</option><option>每页显示50个</option></select>
+    </div>
+    <div class="reply-list-item">
+      <div class="reply-actions">
+        <label><input type="radio" name="reply-row-1" checked> 删除</label>
+        <label><input type="radio" name="reply-row-1"> 还原</label>
+        <label><input type="radio" name="reply-row-1"> 忽略</label>
+      </div>
+      <div class="reply-main">
+        <div><a href="#">赤色一组</a> » <a href="#">赤色一组主题</a></div>
+        <div><strong>作者: test01</strong> <strong>时间: 2026-4-21 09:46</strong> <strong>IP: 206.251.55.214</strong></div>
+        <div class="reply-plain">回复赤色一组主题内容</div>
+        <div class="recycle-meta" style="margin-top:14px;">匿名发布: 否　支持html: 否</div>
+      </div>
+    </div>
+    <div class="recycle-bulk">
+      <button type="button">提交</button>
+      <span class="audit-link-row">全部删除 全部还原 全部忽略</span>
+    </div>
+  </section>
+
+  <section class="recycle-panel" data-recycle-panel="search">
+    <div class="recycle-head">
+      <strong>搜索符合条件的被删回帖</strong>
+    </div>
+    <form class="recycle-search-grid">
+      <div>所在版块:</div>
+      <div><select><option selected>&gt; 全部版块和圈子</option></select></div>
+      <div></div>
+
+      <div>原帖作者:</div>
+      <div><input type="text"></div>
+      <div class="recycle-inline-note">多个用户名间请用半角逗号 "," 隔开</div>
+
+      <div>内容关键字:</div>
+      <div><input type="text"></div>
+      <div class="recycle-inline-note">多关键字中间请用半角逗号 "," 隔开</div>
+
+      <div>帖子发表时间范围:</div>
+      <div class="recycle-date-row"><input type="text"><span>--</span><input type="text"></div>
+      <div class="recycle-inline-note">格式 yyyy-mm-dd，不限制请留空</div>
+
+      <div>帖子分表:</div>
+      <div><input type="text"></div>
+      <div></div>
+
+      <div><button type="button">提交</button></div>
+      <div></div>
+      <div></div>
+    </form>
+  </section>
+
+  <section class="recycle-panel" data-recycle-panel="clean">
+    <div class="recycle-head">
+      <strong>批量清空回帖回收站</strong>
+    </div>
+    <form class="recycle-clean-grid">
+      <div>
+        <div style="margin-bottom: 12px; font-weight: 600;">清空多少天以前的回帖回收站帖子:</div>
+        <input type="text" value="30">
+      </div>
+      <div class="recycle-inline-note">0 为清空全部</div>
+      <div><button type="button">提交</button></div>
+      <div></div>
+    </form>
+  </section>
+  </div>
 </body>
 </html>

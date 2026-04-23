@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>编辑用户组</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .member-group-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+
+    .member-group-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+      border-top: 2px solid #f29b34;
+    }
+
+    .member-group-table th,
+    .member-group-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .member-group-table th {
+      background: #f7fafc;
+      color: #27394d;
+      font-weight: 700;
+    }
+
+    .member-group-table th:nth-child(2),
+    .member-group-table th:nth-child(3),
+    .member-group-table th:nth-child(4),
+    .member-group-table td:nth-child(2),
+    .member-group-table td:nth-child(3),
+    .member-group-table td:nth-child(4) {
+      text-align: center;
+    }
+
+    .member-group-table tbody tr:nth-child(odd) {
+      background: #f8fafc;
+    }
+
+    .member-group-table tbody tr:nth-child(even) {
+      background: #eef3f6;
+    }
+
+    .member-group-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 12px;
+    }
+
+    .member-group-actions a {
+      padding: 6px 12px;
+      background: #f6f6f6;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      border-radius: 3px;
+      text-decoration: none;
+    }
+
+    .group-admin {
+      color: #e01818;
+    }
+
+    .group-link {
+      color: #004cff;
+    }
+
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>编辑用户组</h1>
+  <p>论坛管理员后台 &gt; 权限与安全 &gt; 编辑用户组</p>
+  <nav>
+    <a href="./01-用户组管理.html">编辑用户组</a>
+    <a href="./02-新增用户组.html">新增用户组</a>
+    <a href="./03-全局权限.html">全局权限</a>
+    <a href="./04-板块权限管理.html">板块权限管理</a>
+    <a href="./05-编辑权限文件.html">编辑权限文件</a>
+    <a href="./10-发帖时间段.html">发帖时间段</a>
+  </nav>
+
+  <section class="member-group-card">
+    <table class="member-group-table">
+      <thead>
+        <tr>
+          <th>用户组名字</th>
+          <th>Members</th>
+          <th>编辑</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><a class="group-admin" href="./11-用户组详情.html">Administrator</a> (?)</td><td>9</td><td><a href="./11-用户组详情.html">编辑</a></td></tr>
+        <tr><td><a class="group-link" href="./11-用户组详情.html">Global Moderator</a></td><td>14</td><td><a href="./11-用户组详情.html">编辑</a></td></tr>
+        <tr><td><a href="./11-用户组详情.html">Moderator</a> (?)</td><td>n/a</td><td><a href="./11-用户组详情.html">编辑</a></td></tr>
+        <tr><td><a href="./11-用户组详情.html">RainbowOG</a></td><td>641</td><td><a href="./11-用户组详情.html">编辑</a></td></tr>
+        <tr><td><a href="./11-用户组详情.html">S-VIP</a></td><td>0</td><td><a href="./11-用户组详情.html">编辑</a></td></tr>
+        <tr><td><a href="./11-用户组详情.html">SuperOG</a></td><td>335</td><td><a href="./11-用户组详情.html">编辑</a></td></tr>
+        <tr><td><a href="./11-用户组详情.html">Whitelist</a></td><td>8,120</td><td><a href="./11-用户组详情.html">编辑</a></td></tr>
+      </tbody>
+    </table>
+    <div class="member-group-actions">
+      <a href="./12-添加用户组.html">添加用户组</a>
+    </div>
+  </section>
+
+  <section class="member-group-card">
+    <table class="member-group-table">
+      <thead>
+        <tr>
+          <th>名称</th>
+          <th>会员</th>
+          <th>要求的帖子数</th>
+          <th>编辑</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Newbi</td><td>185843</td><td>0</td><td><a href="./13-编辑会员等级.html">编辑</a></td></tr>
+        <tr><td>Jr. Member</td><td>566</td><td>50</td><td><a href="./13-编辑会员等级.html">编辑</a></td></tr>
+        <tr><td>Full Member</td><td>1821</td><td>100</td><td><a href="./13-编辑会员等级.html">编辑</a></td></tr>
+        <tr><td>Sr. Member</td><td>909</td><td>250</td><td><a href="./13-编辑会员等级.html">编辑</a></td></tr>
+        <tr><td>Hero Member</td><td>192</td><td>500</td><td><a href="./13-编辑会员等级.html">编辑</a></td></tr>
+      </tbody>
+    </table>
+    <div class="member-group-actions">
+      <a href="./14-增加会员等级.html">增加群组</a>
+    </div>
+  </section>
+</body>
+</html>

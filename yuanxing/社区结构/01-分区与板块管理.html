@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>分区与板块管理</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .forum-tree-toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 12px 0 16px;
+    }
+
+    .forum-tree-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .forum-tree-board {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .forum-tree-header,
+    .forum-tree-node {
+      display: grid;
+      grid-template-columns: 80px minmax(320px, 1fr) 180px 120px 260px;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .forum-tree-header {
+      padding: 0 0 8px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .forum-tree-root {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 0 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .forum-tree-type {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 56px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .forum-tree-type.section {
+      background: #e8f0ff;
+      color: #3151ff;
+    }
+
+    .forum-tree-type.board {
+      background: #eefaf2;
+      color: #1e8e52;
+    }
+
+    .forum-tree-type.subboard {
+      background: #fff4e8;
+      color: #d97706;
+    }
+
+    .forum-tree-indent {
+      display: inline-block;
+      width: 18px;
+      flex: 0 0 18px;
+    }
+
+    .forum-tree-toggle {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 8px;
+      font-weight: 700;
+    }
+
+    .forum-tree-action {
+      display: inline-flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .forum-tree-action button {
+      padding: 6px 10px;
+      border-radius: 10px;
+    }
+
+    .forum-tree-muted {
+      color: var(--muted);
+    }
+
+    .forum-tree-status {
+      margin-top: 12px;
+      color: var(--muted);
+    }
+
+    .forum-tree-column {
+      min-width: 0;
+    }
+
+    .forum-tree-branch {
+      position: relative;
+      width: 20px;
+      height: 20px;
+      flex: 0 0 20px;
+      color: transparent;
+    }
+
+    .forum-tree-branch::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 12px;
+      height: 1px;
+      background: #d9e1ee;
+    }
+
+    .forum-tree-branch::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: -8px;
+      width: 1px;
+      height: 18px;
+      background: #d9e1ee;
+    }
+
+    .forum-tree-node.subboard-row .forum-tree-branch::after {
+      top: -10px;
+      height: 20px;
+    }
+
+    .forum-tree-node.section-row {
+      padding: 10px 0;
+      font-weight: 600;
+    }
+
+    .forum-tree-node.board-row,
+    .forum-tree-node.subboard-row {
+      padding: 6px 0;
+    }
+
+    .forum-tree-node.subboard-row {
+      color: #5f6f85;
+    }
+
+    .forum-tree-root > .forum-tree-children {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: relative;
+      margin-left: 28px;
+      padding-left: 18px;
+    }
+
+    .forum-tree-root > .forum-tree-children::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 0;
+      bottom: 12px;
+      width: 1px;
+      background: #d9e1ee;
+    }
+
+    .forum-tree-inline-action {
+      display: inline-flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .forum-tree-inline-action button {
+      padding: 6px 10px;
+      border-radius: 10px;
+    }
+
+    .forum-tree-text-button {
+      background: transparent;
+      border: 0;
+      color: var(--primary);
+      padding: 0;
+    }
+
+    .forum-tree-check {
+      width: 16px;
+      height: 16px;
+    }
+
+    .is-hidden {
+      display: none;
+    }
+
+    @media (max-width: 1200px) {
+      .forum-tree-header,
+      .forum-tree-node {
+        grid-template-columns: 60px minmax(260px, 1fr) 150px 90px 220px;
+        gap: 12px;
+      }
+    }
+  </style>
+  <script defer>
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("forum-structure-form");
+      const rows = () => Array.from(document.querySelectorAll("#forum-tree-body .forum-tree-node[data-id]"));
+      const tbody = document.getElementById("forum-tree-body");
+      const status = document.getElementById("forum-tree-status");
+      let seed = 100;
+
+      if (!form || !tbody || !status) return;
+
+      function childrenOf(id) {
+        return rows().filter((row) => row.dataset.parent === id);
+      }
+
+      function descendantsOf(id) {
+        const result = [];
+        const stack = childrenOf(id);
+        while (stack.length) {
+          const current = stack.shift();
+          result.push(current);
+          stack.push(...childrenOf(current.dataset.id));
+        }
+        return result;
+      }
+
+      function setStatus(text) {
+        status.textContent = text;
+      }
+
+      function toggleRow(row, expand) {
+        row.dataset.collapsed = expand ? "false" : "true";
+        const button = row.querySelector(".forum-tree-toggle");
+        if (button) button.textContent = expand ? "-" : "+";
+        descendantsOf(row.dataset.id).forEach((child) => {
+          if (!expand) {
+            child.classList.add("is-hidden");
+          } else {
+            child.classList.remove("is-hidden");
+            let parentId = child.dataset.parent;
+            while (parentId) {
+              const parent = tbody.querySelector(`.forum-tree-node[data-id="${parentId}"]`);
+              if (parent && parent.dataset.collapsed === "true") {
+                child.classList.add("is-hidden");
+                break;
+              }
+              parentId = parent ? parent.dataset.parent : "";
+            }
+          }
+        });
+      }
+
+      function expandAll() {
+        rows().forEach((row) => {
+          row.classList.remove("is-hidden");
+          if (row.dataset.type === "section" || row.dataset.type === "board") {
+            row.dataset.collapsed = "false";
+            const button = row.querySelector(".forum-tree-toggle");
+            if (button) button.textContent = "-";
+          }
+        });
+        setStatus("已全部展开。");
+      }
+
+      function collapseAll() {
+        rows().forEach((row) => {
+          if (row.dataset.depth !== "0") row.classList.add("is-hidden");
+          if (row.dataset.type === "section" || row.dataset.type === "board") {
+            row.dataset.collapsed = "true";
+            const button = row.querySelector(".forum-tree-toggle");
+            if (button) button.textContent = "+";
+          }
+        });
+        setStatus("已全部折叠。");
+      }
+
+      function rowHtml({ id, parent, type, depth, order, name, moderator, statusText }) {
+        const toggle = type === "section" || type === "board"
+          ? `<button type="button" class="forum-tree-toggle" data-action="toggle">-</button>`
+          : `<span class="forum-tree-indent"></span>`;
+        const indent = Array.from({ length: Number(depth) }).map(() => '<span class="forum-tree-indent"></span>').join("");
+        const addLabel = type === "section" ? "新增板块" : "新增子板块";
+        const rowClass = type === "section" ? "section-row" : type === "board" ? "board-row" : "subboard-row";
+        const typeLabel = type === "section" ? "分区" : type === "board" ? "板块" : "子板块";
+        const branch = type === "section" ? "" : `<span class="forum-tree-branch">${type === "board" ? "├─" : "└─"}</span>`;
+        return `
+          <div class="forum-tree-node ${rowClass}" data-id="${id}" data-parent="${parent}" data-type="${type}" data-depth="${depth}" data-name="${name}" data-status="${statusText}" data-collapsed="false">
+            <div class="forum-tree-column">${toggle}</div>
+            <div class="forum-tree-column">
+              <div class="forum-tree-name">
+                ${indent}
+                ${branch}
+                <span class="forum-tree-type ${type}">${typeLabel}</span>
+                <strong>${name}</strong>
+              </div>
+            </div>
+            <div class="forum-tree-column">${moderator}</div>
+            <div class="forum-tree-column"><input type="checkbox" class="row-check forum-tree-check"></div>
+            <div class="forum-tree-column">
+              <div class="forum-tree-inline-action">
+                <button type="button" data-action="edit">编辑</button>
+                <button type="button" data-action="add-child">${addLabel}</button>
+                <button type="button" data-action="delete">删除</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function insertAfter(target, html) {
+        target.insertAdjacentHTML("afterend", html);
+      }
+
+      function addSection() {
+        const name = window.prompt("请输入新分区名称：", `新分区${seed}`);
+        if (!name) return;
+        seed += 1;
+        tbody.insertAdjacentHTML("beforeend", rowHtml({
+          id: `section-${seed}`,
+          parent: "",
+          type: "section",
+          depth: 0,
+          order: 0,
+          name,
+          moderator: "无 / 添加版主",
+          statusText: "启用",
+        }));
+        setStatus(`已新增分区“${name}”。`);
+      }
+
+      function addChild(row) {
+        const parentType = row.dataset.type;
+        const parentName = row.dataset.name;
+        const name = window.prompt(`请输入要添加到“${parentName}”下的新名称：`, parentType === "section" ? `新板块${seed}` : `新子板块${seed}`);
+        if (!name) return;
+        seed += 1;
+        const newDepth = Number(row.dataset.depth) + 1;
+        const newType = parentType === "section" ? "board" : "subboard";
+        const html = rowHtml({
+          id: `${newType}-${seed}`,
+          parent: row.dataset.id,
+          type: newType,
+          depth: newDepth,
+          order: 0,
+          name,
+          moderator: "无 / 添加版主",
+          statusText: "启用",
+        });
+
+        const descendants = descendantsOf(row.dataset.id);
+        const target = descendants.length ? descendants[descendants.length - 1] : row;
+        insertAfter(target, html);
+        row.dataset.collapsed = "false";
+        const toggle = row.querySelector(".forum-tree-toggle");
+        if (toggle) toggle.textContent = "-";
+        setStatus(`已在“${parentName}”下新增“${name}”。`);
+      }
+
+      function deleteRow(row) {
+        const name = row.dataset.name;
+        if (!window.confirm(`确认删除“${name}”及其下级内容吗？`)) return;
+        descendantsOf(row.dataset.id).forEach((child) => child.remove());
+        row.remove();
+        setStatus(`已删除“${name}”。`);
+      }
+
+      function handleTableClick(event) {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        const row = event.target.closest(".forum-tree-node[data-id]");
+        if (!row) return;
+        const action = button.dataset.action;
+        if (action === "toggle") {
+          const expand = row.dataset.collapsed === "true";
+          toggleRow(row, expand);
+          setStatus(`${expand ? "已展开" : "已折叠"}“${row.dataset.name}”。`);
+        }
+        if (action === "edit") {
+          const nextName = window.prompt("修改名称：", row.dataset.name);
+          if (!nextName) return;
+          row.dataset.name = nextName;
+          row.querySelector(".forum-tree-name strong").textContent = nextName;
+          setStatus(`已更新名称为“${nextName}”。`);
+        }
+        if (action === "add-child") addChild(row);
+        if (action === "delete") deleteRow(row);
+      }
+
+      function submitBatch() {
+        const checked = rows().filter((row) => row.querySelector(".row-check")?.checked);
+        if (!checked.length) {
+          setStatus("请先勾选要批量处理的分区或板块。");
+          return;
+        }
+        const names = checked.map((row) => row.dataset.name).join("、");
+        setStatus(`已提交批量编辑：${names}。`);
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+      });
+
+      tbody.addEventListener("click", handleTableClick);
+      document.getElementById("expand-all-btn").addEventListener("click", expandAll);
+      document.getElementById("collapse-all-btn").addEventListener("click", collapseAll);
+      document.getElementById("add-section-btn").addEventListener("click", addSection);
+      document.getElementById("batch-edit-btn").addEventListener("click", submitBatch);
+      document.getElementById("submit-structure-btn").addEventListener("click", () => {
+        setStatus("分区与板块结构已提交，当前为原型交互演示。");
+      });
+    });
+  </script>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>分区与板块管理</h1>
+  <p>论坛管理员后台 &gt; 社区结构 &gt; 分区与板块管理</p>
+  <nav>
+  <a href="./01-分区与板块管理.html">分区与板块管理</a>
+  <a href="./02-板块合并.html">板块合并</a>
+</nav>
+  <form id="forum-structure-form"></form>
+<section>
+  <h2>分区与板块结构</h2>
+  <div class="forum-tree-toolbar">
+    <button id="expand-all-btn" type="button">全部展开</button>
+    <button id="collapse-all-btn" type="button">全部折叠</button>
+    <button id="add-section-btn" type="button">添加新分区</button>
+    <button id="batch-edit-btn" type="button">批量编辑</button>
+  </div>
+  <div class="forum-tree-board">
+    <div class="forum-tree-header">
+      <div>展开</div>
+      <div>版块名称</div>
+      <div>版主</div>
+      <div>批量编辑</div>
+      <div>操作</div>
+    </div>
+    <div id="forum-tree-body">
+      <div class="forum-tree-root">
+        <div class="forum-tree-node section-row" data-id="section-1" data-parent="" data-type="section" data-depth="0" data-name="彩虹分区" data-status="启用" data-collapsed="false">
+          <div class="forum-tree-column"><button type="button" class="forum-tree-toggle" data-action="toggle">-</button></div>
+          <div class="forum-tree-column"><div class="forum-tree-name"><span class="forum-tree-type section">分区</span><strong>彩虹分区</strong></div></div>
+          <div class="forum-tree-column">admin</div>
+          <div class="forum-tree-column"><input type="checkbox" class="row-check forum-tree-check"></div>
+          <div class="forum-tree-column"><div class="forum-tree-inline-action"><button type="button" data-action="edit">编辑</button><button type="button" data-action="add-child">新增板块</button><button type="button" data-action="delete">删除</button></div></div>
+        </div>
+        <div class="forum-tree-children">
+          <div class="forum-tree-node board-row" data-id="board-1" data-parent="section-1" data-type="board" data-depth="1" data-name="赤色" data-status="启用" data-collapsed="false">
+            <div class="forum-tree-column"><button type="button" class="forum-tree-toggle" data-action="toggle">-</button></div>
+            <div class="forum-tree-column"><div class="forum-tree-name"><span class="forum-tree-indent"></span><span class="forum-tree-branch">├─</span><span class="forum-tree-type board">板块</span><strong>赤色</strong></div></div>
+            <div class="forum-tree-column"><span class="forum-tree-muted">无 / 添加版主</span></div>
+            <div class="forum-tree-column"><input type="checkbox" class="row-check forum-tree-check"></div>
+            <div class="forum-tree-column"><div class="forum-tree-inline-action"><button type="button" data-action="edit">编辑</button><button type="button" data-action="add-child">新增子板块</button><button type="button" data-action="delete">删除</button></div></div>
+          </div>
+          <div class="forum-tree-node subboard-row" data-id="subboard-1" data-parent="board-1" data-type="subboard" data-depth="2" data-name="赤色一组" data-status="启用" data-collapsed="false">
+            <div class="forum-tree-column"><span class="forum-tree-indent"></span></div>
+            <div class="forum-tree-column"><div class="forum-tree-name"><span class="forum-tree-indent"></span><span class="forum-tree-indent"></span><span class="forum-tree-branch">└─</span><span class="forum-tree-type subboard">子板块</span><strong>赤色一组</strong></div></div>
+            <div class="forum-tree-column"><span class="forum-tree-muted">无 / 添加版主</span></div>
+            <div class="forum-tree-column"><input type="checkbox" class="row-check forum-tree-check"></div>
+            <div class="forum-tree-column"><div class="forum-tree-inline-action"><button type="button" data-action="edit">编辑</button><button type="button" data-action="delete">删除</button></div></div>
+          </div>
+          <div class="forum-tree-node board-row" data-id="board-2" data-parent="section-1" data-type="board" data-depth="1" data-name="橙色" data-status="启用" data-collapsed="false">
+            <div class="forum-tree-column"><button type="button" class="forum-tree-toggle" data-action="toggle">-</button></div>
+            <div class="forum-tree-column"><div class="forum-tree-name"><span class="forum-tree-indent"></span><span class="forum-tree-branch">├─</span><span class="forum-tree-type board">板块</span><strong>橙色</strong></div></div>
+            <div class="forum-tree-column"><span class="forum-tree-muted">无 / 添加版主</span></div>
+            <div class="forum-tree-column"><input type="checkbox" class="row-check forum-tree-check"></div>
+            <div class="forum-tree-column"><div class="forum-tree-inline-action"><button type="button" data-action="edit">编辑</button><button type="button" data-action="add-child">新增子板块</button><button type="button" data-action="delete">删除</button></div></div>
+          </div>
+          <div class="forum-tree-node board-row" data-id="board-3" data-parent="section-1" data-type="board" data-depth="1" data-name="黄色" data-status="启用" data-collapsed="false">
+            <div class="forum-tree-column"><button type="button" class="forum-tree-toggle" data-action="toggle">-</button></div>
+            <div class="forum-tree-column"><div class="forum-tree-name"><span class="forum-tree-indent"></span><span class="forum-tree-branch">├─</span><span class="forum-tree-type board">板块</span><strong>黄色</strong></div></div>
+            <div class="forum-tree-column"><span class="forum-tree-muted">无 / 添加版主</span></div>
+            <div class="forum-tree-column"><input type="checkbox" class="row-check forum-tree-check"></div>
+            <div class="forum-tree-column"><div class="forum-tree-inline-action"><button type="button" data-action="edit">编辑</button><button type="button" data-action="add-child">新增子板块</button><button type="button" data-action="delete">删除</button></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="forum-tree-root">
+        <div class="forum-tree-node section-row" data-id="section-2" data-parent="" data-type="section" data-depth="0" data-name="灵魂分区" data-status="启用" data-collapsed="false">
+          <div class="forum-tree-column"><button type="button" class="forum-tree-toggle" data-action="toggle">-</button></div>
+          <div class="forum-tree-column"><div class="forum-tree-name"><span class="forum-tree-type section">分区</span><strong>灵魂分区</strong></div></div>
+          <div class="forum-tree-column">admin</div>
+          <div class="forum-tree-column"><input type="checkbox" class="row-check forum-tree-check"></div>
+          <div class="forum-tree-column"><div class="forum-tree-inline-action"><button type="button" data-action="edit">编辑</button><button type="button" data-action="add-child">新增板块</button><button type="button" data-action="delete">删除</button></div></div>
+        </div>
+        <div class="forum-tree-children">
+          <div class="forum-tree-node board-row" data-id="board-4" data-parent="section-2" data-type="board" data-depth="1" data-name="第一个灵魂分区" data-status="启用" data-collapsed="false">
+            <div class="forum-tree-column"><button type="button" class="forum-tree-toggle" data-action="toggle">-</button></div>
+            <div class="forum-tree-column"><div class="forum-tree-name"><span class="forum-tree-indent"></span><span class="forum-tree-branch">├─</span><span class="forum-tree-type board">板块</span><strong>第一个灵魂分区</strong></div></div>
+            <div class="forum-tree-column"><span class="forum-tree-muted">无 / 添加版主</span></div>
+            <div class="forum-tree-column"><input type="checkbox" class="row-check forum-tree-check"></div>
+            <div class="forum-tree-column"><div class="forum-tree-inline-action"><button type="button" data-action="edit">编辑</button><button type="button" data-action="add-child">新增子板块</button><button type="button" data-action="delete">删除</button></div></div>
+          </div>
+          <div class="forum-tree-node board-row" data-id="board-5" data-parent="section-2" data-type="board" data-depth="1" data-name="第二个灵魂分区" data-status="启用" data-collapsed="false">
+            <div class="forum-tree-column"><button type="button" class="forum-tree-toggle" data-action="toggle">-</button></div>
+            <div class="forum-tree-column"><div class="forum-tree-name"><span class="forum-tree-indent"></span><span class="forum-tree-branch">├─</span><span class="forum-tree-type board">板块</span><strong>第二个灵魂分区</strong></div></div>
+            <div class="forum-tree-column"><span class="forum-tree-muted">无 / 添加版主</span></div>
+            <div class="forum-tree-column"><input type="checkbox" class="row-check forum-tree-check"></div>
+            <div class="forum-tree-column"><div class="forum-tree-inline-action"><button type="button" data-action="edit">编辑</button><button type="button" data-action="add-child">新增子板块</button><button type="button" data-action="delete">删除</button></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p id="forum-tree-status" class="forum-tree-status">当前为可交互原型：可展开、折叠、搜索、添加、删除和批量编辑。</p>
+</section>
+</body>
+</html>

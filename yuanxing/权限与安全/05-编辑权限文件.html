@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>编辑权限文件</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .profile-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 22px;
+    }
+
+    .profile-title {
+      background: #4f7893;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 12px;
+    }
+
+    .profile-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+      border-top: 2px solid #f29b34;
+    }
+
+    .profile-table th,
+    .profile-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .profile-table th {
+      background: #f7fafc;
+      color: #27394d;
+      font-weight: 700;
+    }
+
+    .profile-table th:nth-child(2),
+    .profile-table th:nth-child(3),
+    .profile-table td:nth-child(2),
+    .profile-table td:nth-child(3) {
+      text-align: center;
+    }
+
+    .profile-table tbody tr:nth-child(odd) {
+      background: #f8fafc;
+    }
+
+    .profile-table tbody tr:nth-child(even) {
+      background: #eef3f6;
+    }
+
+    .profile-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .profile-form {
+      display: grid;
+      grid-template-columns: 180px minmax(260px, 1fr);
+      gap: 14px 24px;
+      padding: 18px 22px;
+      background: #f7fafc;
+      align-items: center;
+    }
+
+    .profile-form label {
+      font-weight: 700;
+    }
+
+    .profile-form input,
+    .profile-form select {
+      max-width: 260px;
+    }
+
+    .profile-form-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>编辑权限文件</h1>
+  <p>论坛管理员后台 &gt; 权限与安全 &gt; 编辑权限文件</p>
+  <nav>
+    <a href="./01-用户组管理.html">编辑用户组</a>
+    <a href="./02-新增用户组.html">新增用户组</a>
+    <a href="./03-全局权限.html">全局权限</a>
+    <a href="./04-板块权限管理.html">板块权限管理</a>
+    <a href="./05-编辑权限文件.html">编辑权限文件</a>    <a href="./10-发帖时间段.html">发帖时间段</a>
+  </nav>
+
+  <section class="profile-card">
+    <div class="profile-title">编辑配置文件</div>
+    <table class="profile-table">
+      <thead>
+        <tr>
+          <th>配置文件名称</th>
+          <th>使用</th>
+          <th>删除</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>默认设置</td><td>58 看板</td><td><input type="checkbox" disabled></td></tr>
+        <tr><td>没有调查</td><td>无看板</td><td><input type="checkbox" disabled></td></tr>
+        <tr><td>只回复</td><td>无看板</td><td><input type="checkbox" disabled></td></tr>
+        <tr><td>只读</td><td>2 看板</td><td><input type="checkbox" disabled></td></tr>
+        <tr><td>测试权限</td><td>无看板</td><td><input type="checkbox"></td></tr>
+      </tbody>
+    </table>
+    <div class="profile-actions">
+      <button type="button">删除所选项</button>
+      <button type="button">重命名所有</button>
+    </div>
+  </section>
+
+  <section class="profile-card">
+    <div class="profile-title">新建配置文件</div>
+    <form class="profile-form">
+      <label>配置文件名称:</label>
+      <input type="text">
+
+      <label>Copy Permissions from:</label>
+      <select><option selected>默认设置</option><option>没有调查</option><option>只回复</option><option>只读</option></select>
+
+      <div class="profile-form-actions">
+        <button type="button">创建</button>
+      </div>
+    </form>
+  </section>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>编辑会员等级</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .rank-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .rank-title {
+      background: #4f7893;
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 12px;
+    }
+
+    .rank-form {
+      display: grid;
+      grid-template-columns: 240px minmax(360px, 1fr);
+      gap: 12px 28px;
+      padding: 20px;
+      background: #f7fafc;
+      align-items: start;
+    }
+
+    .rank-label {
+      font-weight: 700;
+      color: #26384d;
+    }
+
+    .rank-form input[type="text"],
+    .rank-form textarea,
+    .rank-form select {
+      max-width: 520px;
+      width: 100%;
+    }
+
+    .rank-form textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .rank-box {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 10px 12px;
+      max-width: 520px;
+    }
+
+    .rank-box strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .rank-box label {
+      display: block;
+      margin: 7px 0;
+    }
+
+    .rank-note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .rank-small {
+      width: 80px !important;
+    }
+
+    .rank-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>编辑会员等级</h1>
+  <p>论坛管理员后台 &gt; 权限与安全 &gt; 编辑用户组 &gt; 编辑会员等级</p>
+  <nav>
+    <a href="./01-用户组管理.html">编辑用户组</a>
+    <a href="./02-新增用户组.html">新增用户组</a>
+    <a href="./03-全局权限.html">全局权限</a>
+    <a href="./04-板块权限管理.html">板块权限管理</a>
+    <a href="./05-编辑权限文件.html">编辑权限文件</a>
+    <a href="./10-发帖时间段.html">发帖时间段</a>
+  </nav>
+
+  <section class="rank-card">
+    <div class="rank-title">编辑群组 - Jr. Member</div>
+    <form class="rank-form">
+      <div class="rank-label">群组名称:</div>
+      <input type="text" value="Jr. Member">
+
+      <div class="rank-label">群组描述:</div>
+      <textarea></textarea>
+
+      <div class="rank-label">群组类型:</div>
+      <div class="rank-box">
+        <strong>选择群组类型</strong>
+        <label><input type="radio" name="rank-type"> 私立（会员身份必须用指定的）</label>
+        <label><input type="radio" name="rank-type"> 受保护的（只有管理员可以管理和分配）</label>
+        <label><input type="radio" name="rank-type"> 申请（会员可以申请加入）</label>
+        <label><input type="radio" name="rank-type"> 自由（会员可以自己加入或退出）</label>
+        <label><input type="radio" name="rank-type" checked> 帖子（会员身份根据帖子数）</label>
+      </div>
+
+      <div class="rank-label">版主:</div>
+      <input type="text">
+
+      <div class="rank-label">能见度:</div>
+      <select disabled><option selected>可见</option></select>
+
+      <div class="rank-label">
+        继承权限:
+        <div class="rank-note">选择 “不要” 启用群组自己的权限档。</div>
+      </div>
+      <select><option selected>不要 - 使用自己的权限</option></select>
+
+      <div class="rank-label">要求的帖子数:</div>
+      <input class="rank-small" type="text" value="50">
+
+      <div class="rank-label">可见版块:</div>
+      <div>
+        <a href="#">[ 显示版块 ]</a>
+      </div>
+
+      <div class="rank-actions">
+        <button type="button">删除</button>
+        <button type="button">保存</button>
+      </div>
+    </form>
+  </section>
+</body>
+</html>

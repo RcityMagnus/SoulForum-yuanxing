@@ -6,41 +6,97 @@
   <title>保留用户名设置</title>
   <link rel="stylesheet" href="../assets/theme.css">
   <script defer src="../assets/theme.js"></script>
+  <style>
+    .reserved-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .reserved-form {
+      padding: 18px 20px;
+      background: #f7fafc;
+    }
+
+    .reserved-tip {
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .reserved-form textarea {
+      width: 100%;
+      min-height: 150px;
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    .reserved-options {
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) 80px;
+      gap: 12px 28px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .reserved-options label {
+      color: #26384d;
+    }
+
+    .reserved-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 22px;
+    }
+  </style>
 </head>
 <body>
   <p><a href="../index.html">返回目录</a></p>
   <h1>保留用户名设置</h1>
-  <p>论坛管理员后台 &gt; 注册与登录 &gt; 保留用户名设置</p>
+  <p>论坛管理员后台 &gt; 注册与封禁 &gt; 保留用户名设置</p>
   <nav>
-  <a href="./01-后台注册新会员.html">后台注册新会员</a>
-  <a href="./02-注册协议设置.html">注册协议设置</a>
-  <a href="./03-隐私政策设置.html">隐私政策设置</a>
-  <a href="./04-保留用户名设置.html">保留用户名设置</a>
-  <a href="./05-注册设置.html">注册设置</a>
-  <a href="./06-登录安全设置.html">登录安全设置</a>
-  <a href="./07-验证码设置.html">验证码设置</a>
-  <a href="./08-二步验证设置.html">二步验证设置</a>
-  <a href="./09-IP访问限制.html">IP访问限制</a>
-  <a href="./10-后台白名单设置.html">后台白名单设置</a>
-</nav>
-  <form>
-  <fieldset>
-    <legend>基础设置</legend>
-<p><label>配置名称<br><input type="text" value="保留用户名设置"></label></p>
-<p><label>当前状态<br><select><option selected>启用</option><option>停用</option><option>按用户组生效</option></select></label></p>
-<p><label>生效范围<br><input type="text" value="注册与登录 / 全站 / 指定板块"></label></p>
-<p><label>默认值<br><input type="text" value="保守模式"></label></p>
-<p class="full"><label>说明与备注<br><textarea>填写策略说明、使用条件、风险提示和业务约束。</textarea></label></p>
-  </fieldset>
-  <p><button>保存设置</button> <button type="button">恢复默认</button></p>
-</form>
-<section>
-  <h2>配置提示</h2>
-  <ul>
-    <li>修改后支持立即生效或按计划生效。</li>
-    <li>关键配置应进入日志与审计模块留痕。</li>
-    <li>配置项保持后台风格统一，不复制参考截图的具体页面结构。</li>
-  </ul>
-</section>
+    <a href="./01-后台注册新会员.html">后台注册新会员</a>
+    <a href="./02-注册协议设置.html">注册协议设置</a>
+    <a href="./03-隐私政策设置.html">隐私政策设置</a>
+    <a href="./04-保留用户名设置.html">保留用户名设置</a>
+    <a href="./05-注册设置.html">注册设置</a>
+    <a href="./06-登录安全设置.html">登录安全设置</a>
+    <a href="./07-验证码设置.html">验证码设置</a>
+    <a href="./08-二步验证设置.html">二步验证设置</a>
+    <a href="./09-IP访问限制.html">IP访问限制</a>
+    <a href="./10-后台白名单设置.html">后台白名单设置</a>
+  <a href="./11-禁止用户.html">禁止用户</a>
+  </nav>
+
+  <section class="reserved-card">
+    <form class="reserved-form">
+      <div class="reserved-tip">“保留名称”是指不能被用户注册为用户名或用作昵称的词语。</div>
+      <div class="reserved-tip">一行一个保留词。</div>
+      <textarea>Fire
+FireDAO
+Rainbow
+RainbowDAO
+fdao</textarea>
+
+      <div class="reserved-options">
+        <label>仅匹配完整名称。如果未选中该项，则只要包含保留名称词就会被禁止。</label>
+        <input type="checkbox">
+
+        <label>考虑大小写。若如果未选中该项，则不区分大小写。</label>
+        <input type="checkbox" checked>
+
+        <label>检查用户名。</label>
+        <input type="checkbox" checked>
+
+        <label>检查昵称。</label>
+        <input type="checkbox" checked>
+      </div>
+
+      <div class="reserved-actions">
+        <button type="button">保存</button>
+      </div>
+    </form>
+  </section>
 </body>
 </html>

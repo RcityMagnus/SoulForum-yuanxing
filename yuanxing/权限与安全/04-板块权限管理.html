@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>板块权限管理</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .board-permission-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .board-permission-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .board-permission-table th,
+    .board-permission-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .board-permission-table th {
+      background: #4f7893;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .board-permission-table td:nth-child(2),
+    .board-permission-table th:nth-child(2) {
+      text-align: left;
+      width: 58%;
+    }
+
+    .board-permission-table tbody tr:nth-child(odd) {
+      background: #f8fafc;
+    }
+
+    .board-permission-table tbody tr:nth-child(even) {
+      background: #eef3f6;
+    }
+
+    .board-group td {
+      padding-top: 16px;
+      font-weight: 700;
+      background: #fff !important;
+      border-bottom: 1px solid #b7c2cc;
+    }
+
+    .board-child {
+      padding-left: 18px;
+    }
+
+    .board-permission-table select {
+      width: 110px;
+    }
+
+    .board-permission-actions {
+      display: flex;
+      justify-content: flex-end;
+      padding: 14px 12px;
+    }
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>板块权限管理</h1>
+  <p>论坛管理员后台 &gt; 权限与安全 &gt; 板块权限管理</p>
+  <nav>
+    <a href="./01-用户组管理.html">编辑用户组</a>
+    <a href="./02-新增用户组.html">新增用户组</a>
+    <a href="./03-全局权限.html">全局权限</a>
+    <a href="./04-板块权限管理.html">板块权限管理</a>
+    <a href="./05-编辑权限文件.html">编辑权限文件</a>    <a href="./10-发帖时间段.html">发帖时间段</a>
+  </nav>
+
+  <section class="board-permission-card">
+    <table class="board-permission-table">
+      <thead>
+        <tr>
+          <th>板块名称</th>
+          <th>权限配置</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="board-group"><td colspan="2">1. Forum Management</td></tr>
+        <tr><td>1.1 Beginners &amp; Help &amp; Tutorial</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 中文教程帮助</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td>1.2 Management &amp; Governance</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td>1.3 Official Announcements</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 中文公告</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+
+        <tr class="board-group"><td colspan="2">2. Bit Civilization</td></tr>
+        <tr><td>2.1 General Discussion</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 2.1 中文综合讨论区</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td>2.2 Bitcoin Discussion</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 2.2 中文比特币讨论专区</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td>2.3 Atomicals Discussion</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 2.3 中文Atomicals 讨论专区</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td>2.4 RCity Discussion</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 2.4 中文RCity讨论专区</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+
+        <tr class="board-group"><td colspan="2">3. RCity Guilds</td></tr>
+        <tr><td>3.1 Financial Guild</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 校长专区</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 3.1 中文运营</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 3.1 彩虹城签到版块</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td>3.3 Marketing Guild</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 3.3 中文市场</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+
+        <tr class="board-group"><td colspan="2">4. RCity Atomicals College</td></tr>
+        <tr><td>4.1 运营铁军</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 铁军1团</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 铁军2团</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+        <tr><td class="board-child">-- 中文学院</td><td><select><option selected>默认设置</option><option>没有调查</option><option>只要</option><option>只读</option></select></td></tr>
+      </tbody>
+    </table>
+    <div class="board-permission-actions">
+      <button type="button">保存权限配置</button>
+    </div>
+  </section>
+</body>
+</html>

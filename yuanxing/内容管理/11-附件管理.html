@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>附件管理</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .attachment-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .attachment-form {
+      display: grid;
+      grid-template-columns: 180px minmax(280px, 1fr) 1.4fr;
+      gap: 18px 28px;
+      align-items: center;
+      padding: 18px 20px 20px;
+    }
+
+    .attachment-form label {
+      font-weight: 700;
+    }
+
+    .attachment-form input,
+    .attachment-form select {
+      max-width: 260px;
+    }
+
+    .attachment-range {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .attachment-range input {
+      max-width: 130px;
+    }
+
+    .attachment-note {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .attachment-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .attachment-table th,
+    .attachment-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .attachment-table th {
+      background: transparent;
+      color: #26384d;
+      font-weight: 700;
+    }
+
+    .attachment-actions {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 16px 20px;
+    }
+
+    .attachment-page {
+      margin-left: auto;
+      border: 1px solid var(--line);
+      padding: 4px 10px;
+      color: #47617f;
+    }
+
+    @media (max-width: 1100px) {
+      .attachment-form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>附件管理</h1>
+  <p>论坛管理员后台 &gt; 内容治理 &gt; 附件管理</p>
+  <nav>
+    <a href="./01-主题管理列表.html">主题管理</a>
+    <a href="./02-帖子管理列表.html">帖子管理</a>
+    <a href="./11-附件管理.html">附件管理</a>
+    <a href="./08-回收站管理.html">回收站</a>
+    <a href="../审核与举报/01-待审核帖子列表.html">审核中心</a>
+    <a href="../审核与举报/06-举报列表.html">举报处理</a>
+    <a href="./09-敏感词.html">敏感词</a>  </nav>
+
+  <section class="attachment-card">
+    <form class="attachment-form">
+      <label>所在版块:</label>
+      <div><select><option selected>&gt; 全部</option><option>赤色一组</option><option>第一个灵魂分区</option></select></div>
+      <div></div>
+
+      <label>每页最多显示数:</label>
+      <div><select><option selected>每页显示20个</option><option>每页显示50个</option><option>每页显示100个</option></select></div>
+      <div></div>
+
+      <label>附件尺寸介于:</label>
+      <div class="attachment-range"><input type="text"><span>--</span><input type="text"></div>
+      <div class="attachment-note">单位：字节</div>
+
+      <label>被下载次数介于:</label>
+      <div class="attachment-range"><input type="text"><span>--</span><input type="text"></div>
+      <div></div>
+
+      <label>文件名:</label>
+      <div><input type="text"></div>
+      <div></div>
+
+      <label>描述关键字:</label>
+      <div><input type="text"></div>
+      <div class="attachment-note">多关键字中间请用半角逗号 "," 隔开</div>
+
+      <label>作者:</label>
+      <div><input type="text"></div>
+      <div></div>
+
+      <div><button type="button">搜索</button></div>
+      <div></div>
+      <div></div>
+    </form>
+  </section>
+
+  <section class="attachment-card">
+    <table class="attachment-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>文件名</th>
+          <th>作者</th>
+          <th>所在主题</th>
+          <th>尺寸</th>
+          <th>下载次数</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><strong>yuanxing.zip</strong></td>
+          <td>test01</td>
+          <td><a href="#">灵魂分区的第一条帖子 ...</a></td>
+          <td>184.19 KB</td>
+          <td>0</td>
+          <td><a href="#">下载</a></td>
+        </tr>
+        <tr>
+          <td><input type="checkbox"></td>
+          <td><strong>屏幕截图 2026-04-17 165712.png</strong></td>
+          <td>test01</td>
+          <td><a href="#">灵魂分区的第一条帖子 ...</a></td>
+          <td>146.96 KB</td>
+          <td>0</td>
+          <td><a href="#">下载</a></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="attachment-actions">
+      <label><input type="checkbox"> 删?</label>
+      <button type="button">提交</button>
+      <a href="#">重新搜索</a>
+      <span class="attachment-page">&raquo;</span>
+    </div>
+  </section>
+</body>
+</html>

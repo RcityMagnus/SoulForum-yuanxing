@@ -1,39 +1,67 @@
 (function () {
-  const MODULES = [
-  "工作台",
-  "内容管理",
-  "审核与举报",
-  "会员管理",
-  "风控与处罚",
-  "板块与结构",
-  "权限与角色",
-  "注册与登录",
-  "通知与私信",
-  "搜索与SEO",
-  "附件与媒体",
-  "数据报表",
-  "日志与审计",
-  "系统设置",
-  "扩展中心"
-];
+  const NAV_GROUPS = [
+    {
+      name: "工作台",
+      entryModule: "工作台",
+      entryPage: "01-后台数据总览.html",
+      modules: ["工作台"],
+    },
+    {
+      name: "内容治理",
+      entryModule: "内容管理",
+      entryPage: "01-主题管理列表.html",
+      modules: ["内容管理", "审核与举报"],
+    },
+    {
+      name: "会员治理",
+      entryModule: "会员管理",
+      entryPage: "01-会员列表.html",
+      modules: ["会员管理"],
+    },
+    {
+      name: "社区结构",
+      entryModule: "社区结构",
+      entryPage: "01-分区与板块管理.html",
+      modules: ["社区结构"],
+    },
+    {
+      name: "权限与安全",
+      entryModule: "权限与安全",
+      entryPage: "01-用户组管理.html",
+      modules: ["权限与安全"],
+    },
+    {
+      name: "注册与封禁",
+      entryModule: "注册与登录",
+      entryPage: "01-后台注册新会员.html",
+      modules: ["注册与登录", "风控与处罚"],
+    },
+    {
+      name: "运营与触达",
+      entryModule: "通知与私信",
+      entryPage: "01-站内公告列表.html",
+      modules: ["通知与私信"],
+    },
+    {
+      name: "平台支撑",
+      entryModule: "搜索与SEO",
+      entryPage: "01-搜索权重设置.html",
+      modules: ["搜索与SEO", "附件与媒体", "系统设置"],
+    },
+    {
+      name: "扩展与审计",
+      entryModule: "日志与审计",
+      entryPage: "01-管理员操作日志.html",
+      modules: ["数据报表", "日志与审计", "扩展中心"],
+    },
+  ];
 
-  const MODULE_ENTRY_PAGES = {
-    "工作台": "01-后台数据总览.html",
-    "内容管理": "01-主题管理列表.html",
-    "审核与举报": "01-待审核帖子列表.html",
-    "会员管理": "01-会员列表.html",
-    "风控与处罚": "01-禁言处理页.html",
-    "板块与结构": "01-分区与板块管理.html",
-    "权限与角色": "01-用户组管理.html",
-    "注册与登录": "01-后台注册新会员.html",
-    "通知与私信": "01-站内公告列表.html",
-    "搜索与SEO": "01-搜索权重设置.html",
-    "附件与媒体": "01-附件浏览.html",
-    "数据报表": "01-会员增长报表.html",
-    "日志与审计": "01-管理员操作日志.html",
-    "系统设置": "01-站点基础信息设置.html",
-    "扩展中心": "01-插件列表.html"
-  };
+  const MODULE_TO_GROUP = NAV_GROUPS.reduce((map, group) => {
+    group.modules.forEach((moduleName) => {
+      map[moduleName] = group.name;
+    });
+    return map;
+  }, {});
 
   function el(tag, className, text) {
     const node = document.createElement(tag);
@@ -44,15 +72,20 @@
 
   function pathInfo() {
     const parts = decodeURIComponent(location.pathname).split("/").filter(Boolean);
-    const candidates = ['原型界面', '_极简原型页面'];
+    const candidates = ['yuanxing', '原型界面', '_极简原型页面'];
     const rootIndex = Math.max(...candidates.map((name) => parts.lastIndexOf(name))); 
     const module = rootIndex >= 0 ? parts[rootIndex + 1] || "" : "";
     const file = rootIndex >= 0 ? parts[rootIndex + 2] || "index.html" : "index.html";
     return { module, file };
   }
 
+  function currentGroupName(currentModule) {
+    return MODULE_TO_GROUP[currentModule] || currentModule || "";
+  }
+
   function buildSidebar(currentModule, currentTitle, rootPrefix) {
     const sidebar = el("aside", "sd-sidebar");
+    const groupName = currentGroupName(currentModule);
 
     const brand = el("div", "sd-brand");
     brand.append(el("div", "sd-brand-mark", "SD"));
@@ -63,20 +96,20 @@
     sidebar.append(brand);
 
     const card1 = el("div", "sd-sidebar-card");
-    card1.append(el("strong", "", currentModule || "总览"));
+    card1.append(el("strong", "", groupName || "总览"));
     card1.append(el("p", "sd-sidebar-note", currentTitle || "页面导航与原型浏览"));
-    card1.append(el("span", "sd-chip", currentModule ? "当前模块" : "总目录"));
+    card1.append(el("span", "sd-chip", groupName ? "当前模块" : "总目录"));
     sidebar.append(card1);
 
     const navGroup = el("div", "sd-nav-group");
     navGroup.append(el("div", "sd-nav-title", "主要模块"));
-    MODULES.forEach((name) => {
+    NAV_GROUPS.forEach((group) => {
       const link = el(
         "a",
-        "sd-nav-link" + (name === currentModule ? " is-active" : "")
+        "sd-nav-link" + (group.name === groupName ? " is-active" : "")
       );
-      link.href = `${rootPrefix}${name}/${MODULE_ENTRY_PAGES[name] || ""}`;
-      link.textContent = name;
+      link.href = `${rootPrefix}${group.entryModule}/${group.entryPage}`;
+      link.textContent = group.name;
       navGroup.append(link);
     });
     sidebar.append(navGroup);
@@ -308,6 +341,7 @@
   function buildDetailPage() {
     const { module } = pathInfo();
     const rootPrefix = "../";
+    const groupName = currentGroupName(module);
     const original = collectNodes(document.body.childNodes);
     const back = original.find((n) => n.tagName === "P" && n.querySelector("a"));
     const titleNode = original.find((n) => n.tagName === "H1");
@@ -324,7 +358,7 @@
     app.append(buildSidebar(module, titleNode ? titleNode.textContent.trim() : "", rootPrefix));
 
     const main = el("main", "sd-main");
-    main.append(buildTopbar(module || "页面"));
+    main.append(buildTopbar(groupName || module || "页面"));
 
     const hero = el("section", "sd-hero");
     hero.append(el("h1", "", titleNode ? titleNode.textContent.trim() : "页面"));

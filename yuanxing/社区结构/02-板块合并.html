@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>板块合并</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <script defer src="../assets/theme.js"></script>
+  <style>
+    .merge-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .merge-row {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 42px;
+      align-items: center;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .merge-row strong {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    .merge-select {
+      max-width: 292px;
+    }
+
+    .merge-note {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .merge-submit {
+      margin-top: -4px;
+    }
+
+    @media (max-width: 960px) {
+      .merge-row {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <p><a href="../index.html">返回目录</a></p>
+  <h1>板块合并</h1>
+  <p>论坛管理员后台 &gt; 社区结构 &gt; 板块合并</p>
+  <nav>
+    <a href="./01-分区与板块管理.html">分区与板块管理</a>
+    <a href="./02-板块合并.html">板块合并</a>
+  </nav>
+  <section>
+    <div class="merge-panel">
+      <div class="merge-row">
+        <div>
+          <strong>合并板块:</strong>
+          <select class="merge-select">
+            <option selected>&gt; 请选择</option>
+            <option>彩虹分区 / 赤色</option>
+            <option>彩虹分区 / 橙色</option>
+            <option>灵魂分区 / 第一个灵魂分区</option>
+          </select>
+        </div>
+        <div class="merge-note">合并板块的帖子全部转入目标版块，同时删除合并板块</div>
+      </div>
+      <div class="merge-row">
+        <div>
+          <strong>目标版块:</strong>
+          <select class="merge-select">
+            <option selected>&gt; 请选择</option>
+            <option>彩虹分区 / 黄色</option>
+            <option>灵魂分区 / 第二个灵魂分区</option>
+            <option>彩虹分区 / 赤色一组</option>
+          </select>
+        </div>
+        <div></div>
+      </div>
+      <div class="merge-submit">
+        <button type="button">提交</button>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
